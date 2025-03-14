@@ -151,7 +151,7 @@ INA226_WE ina226 = INA226_WE(I2C_ADDRESS);
 
 const int chipSelect = 10; // D10 auf Nano Every
 
-const String INIfilename="LOGGER.INI";
+const char INIfilename[] PROGMEM = "LOGGER.INI";
 File logfile;
 int iter;
 float freq;
@@ -166,33 +166,29 @@ float power_mW = 0.0;
 int mnum=1;
 char status[10];
 
-String FileReadLn(File &ReadFile);
+void FileReadLn(File &ReadFile, char *buffer, size_t len);
 
 void setup() {
   File INIFile;
   Serial.begin(460800);
   
-  Serial.println("Initializing INA226 ...");
+  Serial.println(F("Initializing INA226 ..."));
   Wire.begin();
   ina226.init();
   // joerg's board uses a 0.002 Ohm shunt and supports measurements up to 20A
   ina226.setResistorRange(0.002, 20.0);
 
-  Serial.println("Initializing SD card...");
+  Serial.println(F("Initializing SD card..."));
 
   if (!SD.begin(chipSelect)) {
-    Serial.println("initialization failed. Things to check:");
-    Serial.println("1. is a card inserted?");
-    Serial.println("2. is your wiring correct?");
-    Serial.println("3. did you change the chipSelect pin to match your shield or module?");
-    Serial.println("Note: press reset button on the board and reopen this Serial Monitor after fixing your issue!");
-    //while (true);
+    Serial.println(F("initialization failed"));
+    while (true);
   }
 
   if (SD.exists(INIfilename)){
     INIFile = SD.open(INIfilename, FILE_READ);
     if (INIFile.size()>500){
-      Serial.println("Ini file too big; writing a new one");
+      Serial.println(F("Ini file too big; writing a new one"));
       iter=1;
       freq=1.0;
       INIFile.close();
@@ -200,29 +196,39 @@ void setup() {
       }
     else {
       // reading the current next measurement cycle number to use
-      iter=FileReadLn(INIFile).toInt();
+      char buffer[16];
+      FileReadLn(INIFile, buffer, sizeof(buffer));
+      iter=atoi(buffer);
       // the next measurement frequency, e.g. 1.0 -> 1 measurement per second
-      freq=FileReadLn(INIFile).toFloat();
+      FileReadLn(INIFile,buffer,sizeof(buffer));
+      freq=atof(buffer);
       INIFile.close();
-      Serial.println("Read inifile with iter="+String(iter)+", freq="+String(freq,10));
+      Serial.print(F("Read inifile with iter="));
+      Serial.print(iter);
+      Serial.print(F(", freq="));
+      Serial.println(freq, 10);
       iter++;
       SD.remove(INIfilename);
       }
     }
   else {
-    Serial.println("INI file not found on SD Card!");
-    Serial.println("Creating new file called logger.ini with two lines"); 
-    Serial.println("- the first line containing the measurement file number to use next");
-    Serial.println("- the second line containing the number of measurements per second (floats <1 are ok!)");
+    Serial.println(F("INI file not found on SD Card!"));
     iter=1;
     freq=1.0;
     }
 
-  Serial.println("Writing inifile with iter="+String(iter)+", freq="+String(freq,10));
+  Serial.print(F("Writing inifile with iter="));
+  Serial.print(iter);
+  Serial.print(F(", freq="));
+  Serial.println(freq, 10);
 
   freq=100.0;
   delaytime= 1000/freq;
-  Serial.println("Current freq="+String(freq,10)+", delaytime="+String(delaytime));
+  
+  Serial.print(F("Current freq="));
+  Serial.print(freq, 10);
+  Serial.print(F(", delaytime="));
+  Serial.println(delaytime);
   
   INIFile = SD.open(INIfilename, FILE_WRITE);
   if (INIFile){
@@ -231,42 +237,42 @@ void setup() {
     INIFile.close();
     }
   else{
-    Serial.println("issue writing inifile to SD Card");
+    Serial.println(F("issue writing inifile to SD Card"));
     while(true);
   }
 
-  char buf[40]; sprintf(buf,"%05d",iter);
-  char logfn[20]="log"; strcat(logfn,buf); strcat(logfn,".csv");
-  strcpy(buf,"Writing to "); strcat(buf,logfn);
-  Serial.println(buf);
-  String S2=String(logfn);
-  logfile=SD.open(S2,FILE_WRITE);
+  char logfn[20];
+  snprintf(logfn, sizeof(logfn), "log%05d.csv", iter);
+  
+  Serial.print(F("Writing to "));
+  Serial.println(logfn);
+
+  logfile=SD.open(logfn,FILE_WRITE);
   if (logfile){
-    logfile.println("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW");
+    logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
   }
   else{
-    Serial.println("issue writing logfile to SD Card");
+    Serial.println(F("issue writing logfile to SD Card"));
     while(true);
   }
 
   ina226.waitUntilConversionCompleted();
-  Serial.println("initialization done.");   
-  Serial.println("INA226 Current Sensor - Continuous Measurements & Logging");
+  Serial.println(F("initialization done."));   
+  Serial.println(F("INA226 Current Sensor - Continuous Measurements & Logging"));
 }
 
-String FileReadLn(File &ReadFile){
-    String line="";
-
-    while (ReadFile.available()) {
-      char c=ReadFile.read();
-      if (c==0x0a){
-        return line;
+void FileReadLn(File &ReadFile, char *buffer, size_t len) {
+  size_t index = 0;
+  while (ReadFile.available() && index < len - 1) {
+      char c = ReadFile.read();
+      if (c == '\n') {
+          break;
       }
-      else {
-        line=line+c;
-      }
-    }
+      buffer[index++] = c;
+  }
+  buffer[index] = '\0';
 }
+
 
 void loop() {
 
@@ -299,7 +305,7 @@ void loop() {
   */
 
   if(!ina226.overflow){
-    //Serial.println("Values OK - no overflow");
+    //Serial.println(F("Values OK - no overflow"));
       strcpy(status,"ok");  
       }
   else{
