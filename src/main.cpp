@@ -166,6 +166,8 @@ float power_mW = 0.0;
 int mnum=1;
 char status[10];
 
+String FileReadLn(File &ReadFile);
+
 void setup() {
   File INIFile;
   Serial.begin(460800);
