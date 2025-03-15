@@ -1,5 +1,5 @@
 /*
-This sketch implements a data logger - recording voltage, current and power readings
+This code implements a data logger - recording voltage, current and power readings
 of an INA226 sensor; logging the readings into CSV files on a SD Card.
 
 POWERING THE LOGGER
