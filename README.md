@@ -52,9 +52,8 @@ To stop measuring
 Always disconnect the load FIRST, BEFORE disconnecting the power source for 
 the Arduino! Otherwise the logger might loose its power while writing to the SD card, 
 which can cause inconsistent information on the SD card file system. In the worst case, 
-the SD card will become unreadable and must be formatted again and your measurement data 
+the SD card will become unreadable, must be formatted and the SD card data 
 is lost!
-
 
 ## Wiring for Measurements
 
@@ -73,12 +72,12 @@ For a), "HIGH SIDE" the wiring is
 
 For b), "LOW SIDE" the wiring is 
 
-| sensor pin | source connection/pin |  load connection/pin |
-|:----------:|:---------------------:|:--------------------:|
-|   V+       |        +              |         +            |
-|   V-       |        - / GND        |                      |
-|   I+, Current +       |                       |         - / GND      |
-|   I-, Current -       |        - / GND        |                      |
+| sensor pin     | source connection/pin |  load connection/pin |
+|:--------------:|:---------------------:|:--------------------:|
+|   V+           |        +              |         +            |
+|   V-           |        - / GND        |                      |
+|   I+, Current +|                       |         - / GND      |
+|   I-, Current -|        - / GND        |                      |
 
 
 If I+, I- are NOT connected, the logger will only measure/log the source voltage.
@@ -120,3 +119,16 @@ A frequency of 10 means that 10 measurements are made/logged per second. Fractio
 a value of 0.1 means that every 10 seconds a value is logged. DEFAULT: 1.0
 * Third line: load threshold voltage, a float. The logger will start measuring/logging data, if the load 
 voltage is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 6
+
+
+# Hardware Specs
+
+* [Specs Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
+* [AVR ATMega 4809 Specs on Nano Every](https://www.microchip.com/en-us/product/atmega4809)
+* [Serial USB Bridge on Nano Every](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42363-SAM-D11_Datasheet.pdf)
+* [Step Down Converter MPM3610 on Nano Every](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090)
+* [AP2112 voltage regulator on Nano Every](https://www.diodes.com/assets/Datasheets/AP2112.pdf)
+* [36V, 16-bit, ultra-precise i2c output current/voltage/power monitor w/alert](https://www.ti.com/product/INA226) 
+* [INA226 Module on amazon](https://www.amazon.de/dp/B0DGXPWDMP)
+* [AD DS1307 RTC](https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf)
+* [SD Card Holder / RTC Module on bastelgarage.ch](https://www.bastelgarage.ch/micro-sd-data-logger-module-with-rtc)
