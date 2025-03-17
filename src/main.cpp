@@ -54,7 +54,6 @@ the Arduino! Otherwise the logger might loose its power while writing to the SD 
 which can cause inconsistent information on the SD card file system. In the worst case, 
 the SD card will become unreadable and must be formatted again and your measurement data 
 is lost!
-See also the section "POWERING THE LOGGER" above!
 
 #################################### IMPORTANT ####################################
 
