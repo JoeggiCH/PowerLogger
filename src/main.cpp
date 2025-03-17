@@ -222,7 +222,7 @@ void setup() {
   Serial.print(F(", freq="));
   Serial.println(freq, 10);
 
-  freq=100.0;
+  freq=2.0;
   delaytime= 1000/freq;
   
   Serial.print(F("Current freq="));
