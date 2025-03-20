@@ -10,7 +10,9 @@ INA226_WE ina226 = INA226_WE(I2C_ADDRESS);
 
 const int chipSelect = 10; // D10 auf Nano Every
 
-const char INIfilename[] PROGMEM = "LOGGER.INI";
+// const char INIfilename[] PROGMEM = "LOGGER.INI";
+
+const char INIfilename[] = "LOGGER.INI";
 File logfile;
 int iter;
 float freq;
@@ -37,11 +39,14 @@ void setup() {
   // joerg's board uses a 0.002 Ohm shunt and supports measurements up to 20A
   ina226.setResistorRange(0.002, 20.0);
 
-  Serial.println(F("Initializing SD card..."));
+  Serial.print(F("Initializing SD card..."));
 
   if (!SD.begin(chipSelect)) {
-    Serial.println(F("initialization failed"));
+    Serial.println(F("failed"));
     while (true);
+    }
+  else {
+    Serial.println(F("ok"));
   }
 
   if (SD.exists(INIfilename)){
@@ -76,13 +81,16 @@ void setup() {
     freq=1.0;
     }
 
-  Serial.print(F("Writing inifile with iter="));
+  freq=0.5;
+  delaytime= 1000/freq;
+  
+  Serial.print(F("Writing inifile "));
+  Serial.print(INIfilename);
+  Serial.print(F(" with iter="));
   Serial.print(iter);
   Serial.print(F(", freq="));
   Serial.println(freq, 10);
 
-  freq=2.0;
-  delaytime= 1000/freq;
   
   Serial.print(F("Current freq="));
   Serial.print(freq, 10);
@@ -155,13 +163,8 @@ void loop() {
   // is 11.98V, the shunt voltage is 0.02V (2 mOhm Shunt).
   loadVoltage_V  = busVoltage_V + (shuntVoltage_mV/1000);
   
-  /**
-  Serial.print("Shunt Voltage [mV]: "); Serial.println(shuntVoltage_mV);
-  Serial.print("Bus Voltage [V]: "); Serial.println(String(busVoltage_V,5));
-  Serial.print("Load Voltage [V]: "); Serial.println(String(loadVoltage_V,5));
-  Serial.print("Current[mA]: "); Serial.println(current_mA);
-  Serial.print("Bus Power [mW]: "); Serial.println(String(power_mW,5));
-  */
+  
+  
 
   if(!ina226.overflow){
     //Serial.println(F("Values OK - no overflow"));
@@ -171,7 +174,15 @@ void loop() {
     //Serial.println("Overflow! Choose higher current range");
     strcpy(status,"overflow");  
     }
-  //Serial.println();
+  
+
+  Serial.print("Shunt Voltage [mV]: "); Serial.println(shuntVoltage_mV);
+  Serial.print("Bus Voltage [V]: "); Serial.println(String(busVoltage_V,5));
+  Serial.print("Load Voltage [V]: "); Serial.println(String(loadVoltage_V,5));
+  Serial.print("Current[mA]: "); Serial.println(current_mA);
+  Serial.print("Bus Power [mW]: "); Serial.println(String(power_mW,5));
+  Serial.println();
+
 
   logfile.print(millis());                logfile.print(",");
   logfile.print(micros());                logfile.print(",");

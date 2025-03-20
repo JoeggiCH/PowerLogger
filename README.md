@@ -57,32 +57,13 @@ is lost!
 
 ## Wiring for Measurements
 
-The sensor needs to be connected to the source and the load, two configurations are possible:
-a) is called "HIGH SIDE" configuration; 
-b) is called "LOW SIDE" configuration
+The INA226 sensor needs to be connected to the source and the load, two configurations are possible:
 
-For a), "HIGH SIDE" the wiring is 
-|     sensor pin | source connection/pin |  load connection/pin |
-|:--------------:|:---------------------:|:--------------------:|
-|       V+       |        +              |                      |
-|       V-       |        - / GND        |         - / GND      |
-| I+, Current +  |        +              |                      |
-| I-, Current -  |                       |         +            |
-
-
-For b), "LOW SIDE" the wiring is 
-
-| sensor pin     | source connection/pin |  load connection/pin |
-|:--------------:|:---------------------:|:--------------------:|
-|   V+           |        +              |         +            |
-|   V-           |        - / GND        |                      |
-|   I+, Current +|                       |         - / GND      |
-|   I-, Current -|        - / GND        |                      |
-
+![HiLo2](/images/HiLo%20Wiring.png)
 
 If I+, I- are NOT connected, the logger will only measure/log the source voltage.
 
-![Diagram](241124%20Power%20Logger.png)
+![Diagram](/images/FullDiagram.png)
 
 ## Logger Modes
 
@@ -123,8 +104,8 @@ voltage is above this value. See also the section "POWERING THE LOGGER" above. D
 
 # Hardware Specs
 
-* [Specs Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
-* [AVR ATMega 4809 Specs on Nano Every](https://www.microchip.com/en-us/product/atmega4809)
+* [Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
+* [AVR ATMega 4809 on Nano Every](https://www.microchip.com/en-us/product/atmega4809)
 * [Serial USB Bridge on Nano Every](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42363-SAM-D11_Datasheet.pdf)
 * [Step Down Converter MPM3610 on Nano Every](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090)
 * [AP2112 voltage regulator on Nano Every](https://www.diodes.com/assets/Datasheets/AP2112.pdf)
@@ -132,3 +113,4 @@ voltage is above this value. See also the section "POWERING THE LOGGER" above. D
 * [INA226 Module on amazon](https://www.amazon.de/dp/B0DGXPWDMP)
 * [AD DS1307 RTC](https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf)
 * [SD Card Holder / RTC Module on bastelgarage.ch](https://www.bastelgarage.ch/micro-sd-data-logger-module-with-rtc)
+* [SD Card Holder / RTC Module on aliexpress.com](https://www.aliexpress.com/item/1005006248586820.html)
