@@ -1,42 +1,12 @@
 # PowerLogger
 
-This code implements a data logger - recording voltage, current and power readings
-of an INA226 sensor; logging the readings into CSV files on a SD Card.
+This project implements a data logger for electrical voltage, current and power readings. 
 
-## Connecting the Logger
-
-The logger software supports two types of power sources 
-
-1. Independent Power Source: the logger / Arduino is connected to its own power source, which 
-is independent of the power source for the load we want to measure.
-An independent power source can be a powered USB port, which the Arduino is connected to.
-It is also possible to connect an independent power source to the Arduino pins "5V" or "VIN".
-
-2. Common Power Source: the logger and the load to be measured use a common power source. 
-One way of achieving this, is to connec the VIN pin of the Arduino to the V+ pin of the INA226 and
-the + pin of the common power source.
-
-
-There are pros and cons of using an Independent Power Source (1)
-
-   * PRO: power sources with voltages between 0V and 36V can be measured.
-
-   * PRO: the power source for the load can continue to operate without any (major) impact
-   of the sensor and its measurements. The only minor impact is caused by the additional
-   "shunt" resistor the INA226 requires for its measurement. Minimal impact is desired, 
-   for example, if we want to precisely measure the voltage, currents and power of a 
-   charger charging an accumulator battery.
-
-   * CON: additional wiring, an USB power supply, a battery pack or similar is needed.
-
-For a Common Power Source (2)
-
-   * PRO: less space and wiring needed.
-
-   * CON: the supported power source voltages are limited by the Arduino, e.g. in the case of the Arduino Nano 
-   Every, the recommended VIN power is between 4.5V and 21V (see MPM3610 specification). 
-
-
+The logger consists of
+- a TI INA226 chip to measure the electrical values,
+- an Arduino Nano Every as micro controller,
+- a SD holder/card to which the measured values are written in CSV format,
+- an ADI DS1307 Real-Time-Clock to supply date/time information.
 
 ## Measuring
 
@@ -59,9 +29,10 @@ is lost!
 
 The INA226 sensor needs to be connected to the source and the load, two configurations are possible:
 
-![HiLo2](/images/HiLo%20Wiring.png)
+<img src=./images/HiLo%20Wiring.png width="960">
 
-If I+, I- are NOT connected, the logger will only measure/log the source voltage.
+
+If Current+, Current- are NOT (both) connected, the logger will only measure/log the source voltage.
 
 ![Diagram](/images/FullDiagram.png)
 
@@ -101,10 +72,44 @@ a value of 0.1 means that every 10 seconds a value is logged. DEFAULT: 1.0
 * Third line: load threshold voltage, a float. The logger will start measuring/logging data, if the load 
 voltage is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 6
 
+## Connecting the Logger to Power
+
+The logger software supports two types of power sources 
+
+1. Independent Power Source: the logger / Arduino is connected to its own power source, which 
+is independent of the power source for the load we want to measure.
+An independent power source can be a powered USB port, which the Arduino is connected to.
+It is also possible to connect an independent power source to the Arduino pins "5V" or "VIN".
+
+2. Common Power Source: the logger and the load to be measured use a common power source. 
+One way of achieving this, is to connec the VIN pin of the Arduino to the V+ pin of the INA226 and
+the + pin of the common power source.
+
+
+There are pros and cons of using an Independent Power Source (1)
+
+   * PRO: power sources with voltages between 0V and 36V can be measured.
+
+   * PRO: the power source for the load can continue to operate without any (major) impact
+   of the sensor and its measurements. The only minor impact is caused by the additional
+   "shunt" resistor the INA226 requires for its measurement. Minimal impact is desired, 
+   for example, if we want to precisely measure the voltage, currents and power of a 
+   charger charging an accumulator battery.
+
+   * CON: additional wiring, an USB power supply, a battery pack or similar is needed.
+
+For a Common Power Source (2)
+
+   * PRO: less space and wiring needed.
+
+   * CON: the supported power source voltages are limited by the Arduino, e.g. in the case of the Arduino Nano 
+   Every, the recommended VIN power is between 4.5V and 21V (see MPM3610 specification). 
+
 
 # Hardware Specs
 
-* [Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
+* [Arduino Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
+* [Arduino Nano Every Schema](https://content.arduino.cc/assets/NANOEveryV3.0_sch.pdf)
 * [AVR ATMega 4809 on Nano Every](https://www.microchip.com/en-us/product/atmega4809)
 * [Serial USB Bridge on Nano Every](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42363-SAM-D11_Datasheet.pdf)
 * [Step Down Converter MPM3610 on Nano Every](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090)
@@ -114,3 +119,8 @@ voltage is above this value. See also the section "POWERING THE LOGGER" above. D
 * [AD DS1307 RTC](https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf)
 * [SD Card Holder / RTC Module on bastelgarage.ch](https://www.bastelgarage.ch/micro-sd-data-logger-module-with-rtc)
 * [SD Card Holder / RTC Module on aliexpress.com](https://www.aliexpress.com/item/1005006248586820.html)
+
+# Internal Wiring diagram of "Red" INA226 Module
+
+![Diagram](/images/INA226%20red%20module%20wiring.png)
+
