@@ -12,10 +12,10 @@ The logger consists of
 
 1) insert a SD card into the SD card slot. 
 2) connect the power source for the Arduino/the logger : the logger will be in standby
-3) connect the load to the logger : the logger will start measuring/logging after a "SwitchTime" seconds
+3) connect the load to the logger : the logger will start measuring/logging after "SwitchTime" seconds
 
 To stop measuring
-1) disconnect the load: the logger continues measuring/logging for SwitchTime seconds and then stops
+1) disconnect the load: the logger continues measuring/logging for "SwitchTime" seconds and then stops
 2) disconnect the power source
 
 ### IMPORTANT
