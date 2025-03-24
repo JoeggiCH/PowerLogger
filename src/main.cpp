@@ -15,8 +15,18 @@ const int chipSelect = 10; // D10 auf Nano Every
 const char INIfilename[] = "LOGGER.INI";
 File logfile;
 int iter;
+
 float freq;
 int delaytime;
+
+int MeasureCycle=0, NoMeasureCycle=0;
+
+// the logger measures when abs(busVoltage)>busVoltageThreshold for more than SwitchTime secs
+// the logger stops measuring when abs(busVoltage) is lower for more than SwitchTime secs
+float busVoltageThreshold = 4.0;
+int SwitchTime=5.0;
+int MaxCycles; // calculated below
+bool logging=false;
 
 float shuntVoltage_mV = 0.0;
 float loadVoltage_V = 0.0;
@@ -28,6 +38,7 @@ int mnum=1;
 char status[10];
 
 void FileReadLn(File &ReadFile, char *buffer, size_t len);
+void measure_loop();
 
 void setup() {
   File INIFile;
@@ -36,7 +47,7 @@ void setup() {
   Serial.println(F("Initializing INA226 ..."));
   Wire.begin();
   ina226.init();
-  // joerg's board uses a 0.002 Ohm shunt and supports measurements up to 20A
+  // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
   ina226.setResistorRange(0.002, 20.0);
 
   Serial.print(F("Initializing SD card..."));
@@ -81,9 +92,12 @@ void setup() {
     freq=1.0;
     }
 
-  freq=0.5;
+  freq=10;
   delaytime= 1000/freq;
-  
+  MaxCycles=trunc(SwitchTime*1000/delaytime);
+  Serial.print(F("Wait time before starting/stopping measurement [secs]="));
+  Serial.println(SwitchTime);
+
   Serial.print(F("Writing inifile "));
   Serial.print(INIfilename);
   Serial.print(F(" with iter="));
@@ -108,24 +122,8 @@ void setup() {
     while(true);
   }
 
-  char logfn[20];
-  snprintf(logfn, sizeof(logfn), "log%05d.csv", iter);
-  
-  Serial.print(F("Writing to "));
-  Serial.println(logfn);
-
-  logfile=SD.open(logfn,FILE_WRITE);
-  if (logfile){
-    logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
-  }
-  else{
-    Serial.println(F("issue writing logfile to SD Card"));
-    while(true);
-  }
-
   ina226.waitUntilConversionCompleted();
   Serial.println(F("initialization done."));   
-  Serial.println(F("INA226 Current Sensor - Continuous Measurements & Logging"));
 }
 
 void FileReadLn(File &ReadFile, char *buffer, size_t len) {
@@ -140,15 +138,78 @@ void FileReadLn(File &ReadFile, char *buffer, size_t len) {
   buffer[index] = '\0';
 }
 
-
 void loop() {
+      
+  ina226.readAndClearFlags();
+  // is the following necessary ????
+  ina226.waitUntilConversionCompleted();
 
-// Joerg: Bus Voltage, in High Side configuration, is the same as the voltage over
-// the power consumer we want to measure; the total voltage supplied equals the shunt voltage 
-// plus the bus Voltage. 
-// 
-// In Low Side configuration, Bus voltage equals the total voltage supplied.
+  busVoltage_V = ina226.getBusVoltage_V();
 
+  delay(delaytime);
+
+  if (abs(busVoltage_V)>=busVoltageThreshold || (ina226.overflow)) {
+    if (MeasureCycle<MaxCycles+1) {
+      MeasureCycle++;
+    }
+    NoMeasureCycle=0;
+  }
+  else {
+    if (NoMeasureCycle<MaxCycles+1) {
+      NoMeasureCycle++;
+    }
+    MeasureCycle=0;
+  }
+
+  //Serial.print(F("MeasureCycle="));Serial.print(MeasureCycle);
+  //Serial.print(F(" NoMeasureCycle="));Serial.println(NoMeasureCycle);
+
+  if ((MeasureCycle>MaxCycles)) {
+    measure_loop();
+    //Serial.println(F("Measuring"));
+  }
+
+  if (logging && (NoMeasureCycle>0)&&(NoMeasureCycle<MaxCycles)) {
+    measure_loop();
+    //Serial.println(F("Measuring"));
+    }
+
+  if (MeasureCycle==MaxCycles) {
+
+    Serial.print(F("starting new logfile iter="));Serial.println(iter);
+    logging=true;
+
+    // open new logfile
+    char logfn[20];
+    snprintf(logfn, sizeof(logfn), "log%05d.csv", iter);
+
+    Serial.print(F("Writing to "));
+    Serial.println(logfn);
+
+    logfile=SD.open(logfn,FILE_WRITE);
+    if (logfile){
+      logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
+      }
+      else{
+        Serial.println(F("issue writing logfile to SD Card"));
+        // wait 10s
+        delay(10000);
+      } 
+  }
+
+  if (logging && (NoMeasureCycle==MaxCycles)) {
+    logfile.close();
+    iter++;
+    logging=false;
+    Serial.print(F("closing logfile iter="));Serial.println(iter);
+  }
+}
+  
+
+void measure_loop() {
+
+// Bus Voltage is measured between GND and V+ (of the module, VBUS of the INA226 chip)
+// Shunt Voltage is measured between Current- and Current+
 
   ina226.readAndClearFlags();
   shuntVoltage_mV = ina226.getShuntVoltage_mV();
@@ -156,31 +217,25 @@ void loop() {
   current_mA = ina226.getCurrent_mA();
   power_mW = ina226.getBusPower();
 
-  // Joerg: "loadVoltage" confused me, because, to me, the "load" is the power consumer, not 
-  // the power source.
-  // Using the example values from Figure 8-1, section 6.5.1 of the data sheet: 
-  // Total voltage supplied is 12V (=power source), voltage across the load consuming 10A 
-  // is 11.98V, the shunt voltage is 0.02V (2 mOhm Shunt).
-  loadVoltage_V  = busVoltage_V + (shuntVoltage_mV/1000);
+  // "loadVoltage" is the Bus Voltage minus the Shunt Voltage
   
-  
-  
+  loadVoltage_V  = busVoltage_V - (shuntVoltage_mV/1000);
+    
 
   if(!ina226.overflow){
-    //Serial.println(F("Values OK - no overflow"));
       strcpy(status,"ok");  
       }
   else{
-    //Serial.println("Overflow! Choose higher current range");
     strcpy(status,"overflow");  
     }
   
 
-  Serial.print("Shunt Voltage [mV]: "); Serial.println(shuntVoltage_mV);
-  Serial.print("Bus Voltage [V]: "); Serial.println(String(busVoltage_V,5));
-  Serial.print("Load Voltage [V]: "); Serial.println(String(loadVoltage_V,5));
-  Serial.print("Current[mA]: "); Serial.println(current_mA);
-  Serial.print("Bus Power [mW]: "); Serial.println(String(power_mW,5));
+  //Serial.print(F("status: ")); Serial.println(status);
+  //Serial.print(F("Shunt Voltage [mV]: ")); Serial.println(shuntVoltage_mV);
+  Serial.print(F("Bus Voltage [V]: ")); Serial.println(String(busVoltage_V,5));
+  //Serial.print(F("Load Voltage [V]: ")); Serial.println(String(loadVoltage_V,5));
+  //Serial.print(F("Current[mA]: ")); Serial.println(current_mA);
+  //Serial.print(F("Bus Power [mW]: ")); Serial.println(String(power_mW,5));
   Serial.println();
 
 
