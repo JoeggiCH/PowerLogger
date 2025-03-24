@@ -14,19 +14,18 @@ const int chipSelect = 10; // D10 auf Nano Every
 
 const char INIfilename[] = "LOGGER.INI";
 File logfile;
-int iter;
+int iter=1;
 
-float freq;
+float freq=1.0;
 int delaytime;
-
-int MeasureCycle=0, NoMeasureCycle=0;
 
 // the logger measures when abs(busVoltage)>busVoltageThreshold for more than SwitchTime secs
 // the logger stops measuring when abs(busVoltage) is lower for more than SwitchTime secs
-float busVoltageThreshold = 4.0;
-int SwitchTime=5.0;
+float busVoltageThreshold = 6.0;
+int SwitchTime=2.0;
 int MaxCycles; // calculated below
 bool logging=false;
+int MeasureCycle=0, NoMeasureCycle=0;
 
 float shuntVoltage_mV = 0.0;
 float loadVoltage_V = 0.0;
@@ -34,7 +33,6 @@ float busVoltage_V = 0.0;
 float current_mA = 0.0;
 float power_mW = 0.0;
 
-int mnum=1;
 char status[10];
 
 void FileReadLn(File &ReadFile, char *buffer, size_t len);
@@ -42,9 +40,10 @@ void measure_loop();
 
 void setup() {
   File INIFile;
+
   Serial.begin(460800);
-  
   Serial.println(F("Initializing INA226 ..."));
+
   Wire.begin();
   ina226.init();
   // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
@@ -73,15 +72,27 @@ void setup() {
       // reading the current next measurement cycle number to use
       char buffer[16];
       FileReadLn(INIFile, buffer, sizeof(buffer));
-      iter=atoi(buffer);
-      // the next measurement frequency, e.g. 1.0 -> 1 measurement per second
+      if (atoi(buffer)>0) {
+        iter=atoi(buffer);
+      }
+      // measurement frequency, e.g. 1.0 -> 1 measurement per second
       FileReadLn(INIFile,buffer,sizeof(buffer));
-      freq=atof(buffer);
+      if (atof(buffer)>0.0){
+        freq=atof(buffer);
+      }
+      // the voltage threshold
+      FileReadLn(INIFile,buffer,sizeof(buffer));
+      if (atof(buffer)>0.0) {
+        busVoltageThreshold=atof(buffer);
+      }
+
       INIFile.close();
       Serial.print(F("Read inifile with iter="));
       Serial.print(iter);
       Serial.print(F(", freq="));
-      Serial.println(freq, 10);
+      Serial.print(freq, 10);
+      Serial.print(F(", voltage threshold="));
+      Serial.println(busVoltageThreshold, 10);
       iter++;
       SD.remove(INIfilename);
       }
@@ -95,26 +106,23 @@ void setup() {
   freq=10;
   delaytime= 1000/freq;
   MaxCycles=trunc(SwitchTime*1000/delaytime);
-  Serial.print(F("Wait time before starting/stopping measurement [secs]="));
-  Serial.println(SwitchTime);
-
+  
   Serial.print(F("Writing inifile "));
   Serial.print(INIfilename);
   Serial.print(F(" with iter="));
   Serial.print(iter);
   Serial.print(F(", freq="));
-  Serial.println(freq, 10);
-
-  
-  Serial.print(F("Current freq="));
   Serial.print(freq, 10);
   Serial.print(F(", delaytime="));
-  Serial.println(delaytime);
+  Serial.print(delaytime);
+  Serial.print(F(", busVoltageThreshold="));
+  Serial.println(busVoltageThreshold, 10);
   
   INIFile = SD.open(INIfilename, FILE_WRITE);
   if (INIFile){
     INIFile.println(String(iter));
     INIFile.println(String(freq,10));
+    INIFile.println(String(busVoltageThreshold,10));
     INIFile.close();
     }
   else{
@@ -148,6 +156,11 @@ void loop() {
 
   delay(delaytime);
 
+  Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
+  Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
+  Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
+  
+
   if (abs(busVoltage_V)>=busVoltageThreshold || (ina226.overflow)) {
     if (MeasureCycle<MaxCycles+1) {
       MeasureCycle++;
@@ -161,17 +174,13 @@ void loop() {
     MeasureCycle=0;
   }
 
-  //Serial.print(F("MeasureCycle="));Serial.print(MeasureCycle);
-  //Serial.print(F(" NoMeasureCycle="));Serial.println(NoMeasureCycle);
 
   if ((MeasureCycle>MaxCycles)) {
     measure_loop();
-    //Serial.println(F("Measuring"));
   }
 
   if (logging && (NoMeasureCycle>0)&&(NoMeasureCycle<MaxCycles)) {
     measure_loop();
-    //Serial.println(F("Measuring"));
     }
 
   if (MeasureCycle==MaxCycles) {
@@ -211,7 +220,7 @@ void measure_loop() {
 // Bus Voltage is measured between GND and V+ (of the module, VBUS of the INA226 chip)
 // Shunt Voltage is measured between Current- and Current+
 
-  ina226.readAndClearFlags();
+  //ina226.readAndClearFlags();
   shuntVoltage_mV = ina226.getShuntVoltage_mV();
   busVoltage_V = ina226.getBusVoltage_V();
   current_mA = ina226.getCurrent_mA();
@@ -232,11 +241,13 @@ void measure_loop() {
 
   //Serial.print(F("status: ")); Serial.println(status);
   //Serial.print(F("Shunt Voltage [mV]: ")); Serial.println(shuntVoltage_mV);
-  Serial.print(F("Bus Voltage [V]: ")); Serial.println(String(busVoltage_V,5));
+  //Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
+  //Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
+  //Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
   //Serial.print(F("Load Voltage [V]: ")); Serial.println(String(loadVoltage_V,5));
   //Serial.print(F("Current[mA]: ")); Serial.println(current_mA);
   //Serial.print(F("Bus Power [mW]: ")); Serial.println(String(power_mW,5));
-  Serial.println();
+  //Serial.println();
 
 
   logfile.print(millis());                logfile.print(",");

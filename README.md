@@ -12,10 +12,10 @@ The logger consists of
 
 1) insert a SD card into the SD card slot. 
 2) connect the power source for the Arduino/the logger : the logger will be in standby
-3) connect the load to the logger : the logger will start measuring/logging
+3) connect the load to the logger : the logger will start measuring/logging after a "SwitchTime" seconds
 
 To stop measuring
-1) disconnect the load: the logger goes to standby
+1) disconnect the load: the logger continues measuring/logging for SwitchTime seconds and then stops
 2) disconnect the power source
 
 ### IMPORTANT
@@ -40,21 +40,21 @@ If Current+, Current- are NOT (both) connected, the logger will only measure/log
 
 The logger can be in one of two modes
 - STANDBY - waiting for a load to be connected
-- MEASURE - actively measuring and writing to the SD
+- LOGGING - measuring and writing to the SD
 
-During STANDBY, the pin 13 LED will flash at a slow rate.
-During MEASURE, the pin 13 LED will flash at the rate of the measurement frequency
+During STANDBY, the pin 13 LED will not flash.
+During LOGGING, the pin 13 LED will flash at the rate of the measurement frequency
 
-At each transition from STANDBY to MEASURE a new measurement cycle begins and
+At each transition from STANDBY to LOGGING a new measurement cycle begins and
 a file with the name 'logNNNNN.csv' is created on the SD card; NNNNN indicates 
 the number of the measurement cycle; the number is increased for each cycle. 
 
-At each transition from MEASURE to STANDBY, the measurement file is closed and
+At each transition from LOGGING to STANDBY, the measurement file is closed and
 the measurement cycle finishes.
 
 During STANDBY mode the logger keeps checking the sensor for a load threshold 
 voltage, above the load threshold voltage measurements will start, i.e. the mode changes
-to "MEASURE" Below the load threshold voltage the logger assumes that the load is not 
+to "LOGGING" Below the load threshold voltage the logger assumes that the load is not 
 connected yet and the STANDBY mode will continue.
 
 
