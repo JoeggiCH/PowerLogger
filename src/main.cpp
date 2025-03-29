@@ -3,14 +3,20 @@
 #include <INA226_WE.h>
 #include <SPI.h>
 #include <SD.h>
-#include <RTClib.h>
 
+
+#include <RtcDS1307.h>
+extern RtcDS1307<TwoWire> Rtc;
+extern void printDateTime(const RtcDateTime& dt);
+extern bool wasError(const char* errorTopic = "");
+extern void rtcsetup ();
+
+// for INA226
 #define I2C_ADDRESS 0x40
 INA226_WE ina226 = INA226_WE(I2C_ADDRESS);
 
+// for SPI bus used by Data Logging Module
 const int chipSelect = 10; // D10 auf Nano Every
-
-// const char INIfilename[] PROGMEM = "LOGGER.INI";
 
 const char INIfilename[] = "LOGGER.INI";
 File logfile;
@@ -48,6 +54,9 @@ void setup() {
   ina226.init();
   // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
   ina226.setResistorRange(0.002, 20.0);
+
+  Serial.println(F("Initializing DS1307 ..."));
+  rtcsetup();
 
   Serial.print(F("Initializing SD card..."));
 
@@ -103,7 +112,7 @@ void setup() {
     freq=1.0;
     }
 
-  freq=10;
+  freq=0.3;
   delaytime= 1000/freq;
   MaxCycles=trunc(SwitchTime*1000/delaytime);
   
@@ -130,6 +139,7 @@ void setup() {
     while(true);
   }
 
+  
   ina226.waitUntilConversionCompleted();
   Serial.println(F("initialization done."));   
 }
@@ -157,8 +167,8 @@ void loop() {
   delay(delaytime);
 
   Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
-  Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
-  Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
+  //Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
+  //Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
   
 
   if (abs(busVoltage_V)>=busVoltageThreshold || (ina226.overflow)) {
@@ -166,12 +176,14 @@ void loop() {
       MeasureCycle++;
     }
     NoMeasureCycle=0;
+    //Serial.print("X");
   }
   else {
     if (NoMeasureCycle<MaxCycles+1) {
       NoMeasureCycle++;
     }
     MeasureCycle=0;
+    //Serial.print("_");
   }
 
 
@@ -184,19 +196,35 @@ void loop() {
     }
 
   if (MeasureCycle==MaxCycles) {
-
-    Serial.print(F("starting new logfile iter="));Serial.println(iter);
     logging=true;
 
     // open new logfile
     char logfn[20];
     snprintf(logfn, sizeof(logfn), "log%05d.csv", iter);
 
-    Serial.print(F("Writing to "));
+    Serial.print(F("\nWriting to "));
     Serial.println(logfn);
+
+    char datestring[26];
+    RtcDateTime now = Rtc.GetDateTime();
+    if (!wasError("loop GetDateTime")) {
+
+      snprintf_P(datestring, 
+              countof(datestring),
+              PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+              now.Month(),
+              now.Day(),
+              now.Year(),
+              now.Hour(),
+              now.Minute(),
+              now.Second() );
+    }
+  
 
     logfile=SD.open(logfn,FILE_WRITE);
     if (logfile){
+      logfile.print(F("RTC is "));
+      logfile.println(datestring);
       logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
       }
       else{
@@ -210,7 +238,7 @@ void loop() {
     logfile.close();
     iter++;
     logging=false;
-    Serial.print(F("closing logfile iter="));Serial.println(iter);
+    Serial.println(F("\nclosing logfile"));
   }
 }
   
@@ -244,11 +272,10 @@ void measure_loop() {
   //Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
   //Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
   //Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
-  //Serial.print(F("Load Voltage [V]: ")); Serial.println(String(loadVoltage_V,5));
-  //Serial.print(F("Current[mA]: ")); Serial.println(current_mA);
-  //Serial.print(F("Bus Power [mW]: ")); Serial.println(String(power_mW,5));
-  //Serial.println();
-
+  Serial.print(F("Load Voltage [V]: ")); Serial.println(String(loadVoltage_V,5));
+  Serial.print(F("Current[mA]: ")); Serial.println(current_mA);
+  Serial.print(F("Bus Power [mW]: ")); Serial.println(String(power_mW,5));
+  Serial.println();
 
   logfile.print(millis());                logfile.print(",");
   logfile.print(micros());                logfile.print(",");
@@ -258,5 +285,5 @@ void measure_loop() {
   logfile.print(String(power_mW,5));      logfile.println();
 
   logfile.flush();
-  delay(delaytime);
+  //delay(delaytime);
 }
