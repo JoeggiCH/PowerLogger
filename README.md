@@ -61,7 +61,7 @@ connected yet and the STANDBY mode will continue.
 # Configuration File on SD Card
 
 The logger uses a configuration file called LOGGER.INI, in the root folder of the SD card.
-The file is a text file containing one value (a string representing a number) per line.
+This text file contains one value (a string representing a number) per line.
 If there is no LOGGER.INI file on the SD card, the logger will create it - using default values.
 
 * First line: next measurement cycle number, an integer. With each transition from "standby" to "measure"
@@ -82,7 +82,7 @@ An independent power source can be a powered USB port, which the Arduino is conn
 It is also possible to connect an independent power source to the Arduino pins "5V" or "VIN".
 
 2. Common Power Source: the logger and the load to be measured use a common power source. 
-One way of achieving this, is to connec the VIN pin of the Arduino to the V+ pin of the INA226 and
+One way of achieving this, is to connect the VIN pin of the Arduino to the V+ pin of the INA226 and
 the + pin of the common power source.
 
 
@@ -114,7 +114,7 @@ For a Common Power Source (2)
 * [Serial USB Bridge on Nano Every](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42363-SAM-D11_Datasheet.pdf)
 * [Step Down Converter MPM3610 on Nano Every](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090)
 * [AP2112 voltage regulator on Nano Every](https://www.diodes.com/assets/Datasheets/AP2112.pdf)
-* [36V, 16-bit, ultra-precise i2c output current/voltage/power monitor w/alert](https://www.ti.com/product/INA226) 
+* [INA226 36V, 16-bit, ultra-precise i2c output current/voltage/power monitor w/alert](https://www.ti.com/product/INA226) 
 * [INA226 Module on amazon](https://www.amazon.de/dp/B0DGXPWDMP)
 * [AD DS1307 RTC](https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf)
 * [SD Card Holder / RTC Module on bastelgarage.ch](https://www.bastelgarage.ch/micro-sd-data-logger-module-with-rtc)

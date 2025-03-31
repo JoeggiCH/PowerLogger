@@ -17,29 +17,29 @@ bool wasError(const char* errorTopic = "")
         // for what the number means
         Serial.print("[");
         Serial.print(errorTopic);
-        Serial.print("] WIRE communications error (");
+        Serial.print(F("] WIRE communications error ("));
         Serial.print(error);
         Serial.print(") : ");
 
         switch (error)
         {
         case Rtc_Wire_Error_None:
-            Serial.println("(none?!)");
+            Serial.println(F("(none?!)"));
             break;
         case Rtc_Wire_Error_TxBufferOverflow:
-            Serial.println("transmit buffer overflow");
+            Serial.println(F("transmit buffer overflow"));
             break;
         case Rtc_Wire_Error_NoAddressableDevice:
-            Serial.println("no device responded");
+            Serial.println(F("no device responded"));
             break;
         case Rtc_Wire_Error_UnsupportedRequest:
-            Serial.println("device doesn't support request");
+            Serial.println(F("device doesn't support request"));
             break;
         case Rtc_Wire_Error_Unspecific:
-            Serial.println("unspecified error");
+            Serial.println(F("unspecified error"));
             break;
         case Rtc_Wire_Error_CommunicationTimeout:
-            Serial.println("communications timed out");
+            Serial.println(F("communications timed out"));
             break;
         }
         return true;
@@ -50,7 +50,7 @@ bool wasError(const char* errorTopic = "")
 
 void rtcsetup () 
 {
-    Serial.print("This code was compiled on: ");
+    Serial.print(F("This code was compiled on: here "));
     Serial.print(__DATE__);
     Serial.print(" ");
     Serial.println(__TIME__);
@@ -80,9 +80,9 @@ void rtcsetup ()
 
     if (!Rtc.GetIsRunning())
     {
-        if (!wasError("setup GetIsRunning"))
+        if (!wasError("GetIsRunning in rtcsetup"))
         {
-            Serial.println("RTC was not actively running, starting now");
+            Serial.println(F("RTC was not actively running, starting now"));
             Rtc.SetIsRunning(true);
         }
     }
@@ -111,28 +111,6 @@ void rtcsetup ()
     Rtc.SetSquareWavePin(DS1307SquareWaveOut_Low); 
     wasError("setup SetSquareWavePin");
 
-}
-
-void rtcloop () 
-{
-    if (!Rtc.IsDateTimeValid()) 
-    {
-        if (!wasError("loop IsDateTimeValid"))
-        {
-            // Common Causes:
-            //    1) the battery on the device is low or even missing and the power line was disconnected
-            Serial.println("RTC lost confidence in the DateTime!");
-        }
-    }
-
-    RtcDateTime now = Rtc.GetDateTime();
-    if (!wasError("loop GetDateTime"))
-    {
-        printDateTime(now);
-        Serial.println();
-    }
-
-    delay(10000); // ten seconds
 }
 
 #define countof(a) (sizeof(a) / sizeof(a[0]))

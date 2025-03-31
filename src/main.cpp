@@ -54,6 +54,9 @@ void setup() {
   ina226.init();
   // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
   ina226.setResistorRange(0.002, 20.0);
+  ina226.readAndClearFlags();
+  ina226.waitUntilConversionCompleted();
+
 
   Serial.println(F("Initializing DS1307 ..."));
   rtcsetup();
@@ -112,9 +115,9 @@ void setup() {
     freq=1.0;
     }
 
-  freq=0.3;
+  freq=0.25;
   delaytime= 1000/freq;
-  MaxCycles=trunc(SwitchTime*1000/delaytime);
+  MaxCycles=max(1,trunc(SwitchTime*1000/delaytime));
   
   Serial.print(F("Writing inifile "));
   Serial.print(INIfilename);
@@ -139,8 +142,6 @@ void setup() {
     while(true);
   }
 
-  
-  ina226.waitUntilConversionCompleted();
   Serial.println(F("initialization done."));   
 }
 
@@ -158,7 +159,6 @@ void FileReadLn(File &ReadFile, char *buffer, size_t len) {
 
 void loop() {
       
-  ina226.readAndClearFlags();
   // is the following necessary ????
   ina226.waitUntilConversionCompleted();
 
@@ -166,7 +166,17 @@ void loop() {
 
   delay(delaytime);
 
-  Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
+Serial.print("MaxCycles ");
+Serial.print(MaxCycles);
+Serial.print(" MeasureCycle ");
+Serial.print(MeasureCycle);
+Serial.print(" NoMeasureCycle ");
+Serial.print(NoMeasureCycle);
+Serial.print(" logging ");
+Serial.println(logging);
+
+
+  //Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
   //Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
   //Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
   
@@ -186,7 +196,6 @@ void loop() {
     //Serial.print("_");
   }
 
-
   if ((MeasureCycle>MaxCycles)) {
     measure_loop();
   }
@@ -197,6 +206,7 @@ void loop() {
 
   if (MeasureCycle==MaxCycles) {
     logging=true;
+    MeasureCycle++;
 
     // open new logfile
     char logfn[20];
@@ -205,24 +215,34 @@ void loop() {
     Serial.print(F("\nWriting to "));
     Serial.println(logfn);
 
-    char datestring[26];
+    if (!Rtc.IsDateTimeValid()) 
+    {
+        if (!wasError("IsDateTimeValid in loop"))
+        {
+            // Common Causes:
+            //    1) the battery on the device is low or even missing and the power line was disconnected
+            Serial.println(F("Lost confidence in RTC DateTime!"));
+        }
+    }
+
+    char datestring[21];
     RtcDateTime now = Rtc.GetDateTime();
-    if (!wasError("loop GetDateTime")) {
+    if (!wasError("GetDateTime in loop")) {
 
       snprintf_P(datestring, 
               countof(datestring),
               PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-              now.Month(),
               now.Day(),
+              now.Month(),
               now.Year(),
               now.Hour(),
               now.Minute(),
               now.Second() );
     }
   
-
     logfile=SD.open(logfn,FILE_WRITE);
     if (logfile){
+      Serial.println(datestring);
       logfile.print(F("RTC is "));
       logfile.println(datestring);
       logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
@@ -231,12 +251,14 @@ void loop() {
         Serial.println(F("issue writing logfile to SD Card"));
         // wait 10s
         delay(10000);
+        setup();
       } 
   }
 
   if (logging && (NoMeasureCycle==MaxCycles)) {
     logfile.close();
     iter++;
+    NoMeasureCycle++;
     logging=false;
     Serial.println(F("\nclosing logfile"));
   }
@@ -268,7 +290,7 @@ void measure_loop() {
   
 
   //Serial.print(F("status: ")); Serial.println(status);
-  //Serial.print(F("Shunt Voltage [mV]: ")); Serial.println(shuntVoltage_mV);
+  Serial.print(F("Shunt Voltage [mV]: ")); Serial.println(shuntVoltage_mV);
   //Serial.print(F("Bus Voltage [V]: ")); Serial.print(String(busVoltage_V,5));
   //Serial.print(F(" - MeasureCycle: ")); Serial.print(String(MeasureCycle));
   //Serial.print(F(" - NoMeasureCycle: ")); Serial.println(String(NoMeasureCycle));
