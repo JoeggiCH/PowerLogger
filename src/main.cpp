@@ -161,7 +161,7 @@ void loop() {
   busVoltage_V = ina226.getBusVoltage_V();
   current_mA = -ina226.getCurrent_mA();
 
-  if ((abs(busVoltage_V)>=busVoltageThreshold && (current_mA)>=currentThreshold) || (ina226.overflow)) {
+  if ((abs(busVoltage_V)>=busVoltageThreshold && (abs(current_mA))>=currentThreshold) || (ina226.overflow)) {
     // condition met, so CyclesCondMet is increased up to a maximum of MaxCycles+1
     if (CyclesCondMet<MaxCycles+1) {
       CyclesCondMet++;

@@ -110,10 +110,11 @@ For a Common Power Source (2)
 
 * [Arduino Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
 * [Arduino Nano Every Schema](https://content.arduino.cc/assets/NANOEveryV3.0_sch.pdf)
-* [AVR ATMega 4809 on Nano Every](https://www.microchip.com/en-us/product/atmega4809)
-* [Serial USB Bridge on Nano Every](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42363-SAM-D11_Datasheet.pdf)
-* [Step Down Converter MPM3610 on Nano Every](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090)
-* [AP2112 voltage regulator on Nano Every](https://www.diodes.com/assets/Datasheets/AP2112.pdf)
+* [AVR ATMega 4809](https://www.microchip.com/en-us/product/atmega4809) on Nano Every
+* [Serial USB Bridge](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42363-SAM-D11_Datasheet.pdf) on Nano Every
+* [Step Down Converter MPM3610](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090) on Nano Every
+* [AP2112 voltage regulator](https://www.diodes.com/assets/Datasheets/AP2112.pdf) on Nano Every
+* [Ultra low capacitance double rail-to-rail ESD protection diode](https://www.nexperia.com/product/PRTR5V0U2X) on Nano Every
 * [INA226 36V, 16-bit, ultra-precise i2c output current/voltage/power monitor w/alert](https://www.ti.com/product/INA226) 
 * [INA226 Module on amazon](https://www.amazon.de/dp/B0DGXPWDMP)
 * [AD DS1307 RTC](https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf)
