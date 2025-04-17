@@ -106,20 +106,32 @@ void setup() {
       if (atof(buffer)>0.0) {
         busVoltageThreshold=atof(buffer);
       }
+      // the current threshold
+      FileReadLn(INIFile,buffer,sizeof(buffer));
+      if (atof(buffer)>0.0) {
+        currentThreshold=atof(buffer);
+      }
 
       INIFile.close();
-      Serial.print(F("Read inifile with iter="));
+      Serial.print(F("Read "));
+      Serial.print(INIfilename);
+      Serial.print(F(" with iter="));
       Serial.print(iter);
       Serial.print(F(", freq="));
       Serial.print(freq, 10);
       Serial.print(F(", voltage threshold="));
-      Serial.println(busVoltageThreshold, 10);
+      Serial.print(busVoltageThreshold, 10);
+      Serial.print(F(", current threshold="));
+      Serial.println(currentThreshold, 10);
+
       iter++;
       }
     else {    
       Serial.println(F("Ini file too big; will write a new INI file"));
       iter=1;
       freq=1.0;
+      busVoltageThreshold=0.0;
+      currentThreshold=0.0;    
       INIFile.close();
       }
     }
@@ -132,8 +144,8 @@ void setup() {
   // TEMP
   // temporary definitions, so I don't have to use the INI file for configuring it
   freq=0.2;
-  busVoltageThreshold=0.0;
-  currentThreshold=0.0;
+  busVoltageThreshold=5.0;
+  currentThreshold=10.0;
   // end of temp section
   // TEMP
   

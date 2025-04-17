@@ -69,8 +69,11 @@ the logger will increase this number.  DEFAULT: 1
 * Second line: measurement frequency, a float. A value of 1.0 means that one measurement is done per second. 
 A frequency of 10 means that 10 measurements are made/logged per second. Fractions are supported as well, e.g. 
 a value of 0.1 means that every 10 seconds a value is logged. DEFAULT: 1.0
-* Third line: load threshold voltage, a float. The logger will start measuring/logging data, if the load 
-voltage is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 6
+* Third line: Bus threshold voltage, a float. The logger will start measuring/logging data, if the bus
+voltage is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 0
+* Fourth line: load threshold current in mA, a float. The logger will start measuring/logging data, if the current 
+is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 0
+
 
 ## Connecting the Logger to Power
 
@@ -120,6 +123,12 @@ For a Common Power Source (2)
 * [AD DS1307 RTC](https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf)
 * [SD Card Holder / RTC Module on bastelgarage.ch](https://www.bastelgarage.ch/micro-sd-data-logger-module-with-rtc)
 * [SD Card Holder / RTC Module on aliexpress.com](https://www.aliexpress.com/item/1005006248586820.html)
+
+# Libraries
+* [wollewald / INA226_WE](https://github.com/wollewald/INA226_WE) on github
+* [INA226 Strom- und Leistungssensor](https://wolles-elektronikkiste.de/ina226) (from the same author but in German)
+* [Makuna / Rtc](https://github.com/Makuna/Rtc/wiki) on github
+
 
 # Internal Wiring diagram of "Red" INA226 Module
 
