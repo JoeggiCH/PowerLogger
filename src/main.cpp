@@ -26,10 +26,10 @@ File logfile;
 // logfiles are closed when logging threshold conditions are no longer met
 int iter;
 
-// the logger measures when abs(busVoltage)>busVoltageThreshold for more than SwitchTime secs
-// and if the abs(current) > currentThreshold
-// setting values to 0.0 means the condition is always met
-// the values are set from the INI file
+// the logger logs when abs(busVoltage)>busVoltageThreshold AND abs(current) > currentThreshold 
+// and the condition is true for more than SwitchTime secs
+// setting threshold values to 0.0 means the condition is always met
+// values are read from the INI file
 float busVoltageThreshold;
 float currentThreshold;
 
@@ -43,14 +43,14 @@ float busVoltage_V = 0.0;
 float current_mA = 0.0;
 float power_mW = 0.0;
 
-// Some other global variables
+// Other global variables
 int SwitchTime=2.0;
 int MaxCycles;
 bool logging=false;
 char status[10];
 float freq=1.0;
-int delaytime;
-
+unsigned long delaytime;
+unsigned long StartOfLoopMicros;
 
 void FileReadLn(File &ReadFile, char *buffer, size_t len);
 void measure_loop();
@@ -66,6 +66,7 @@ void setup() {
   ina226.init();
   // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
   ina226.setResistorRange(0.002, 20.0);
+  ina226.setCorrectionFactor(0.947818013);
   ina226.readAndClearFlags();
   ina226.waitUntilConversionCompleted();
 
@@ -80,7 +81,7 @@ void setup() {
     }
   else {
     Serial.println(F("ok"));
-  }
+    }
 
   // INI File Handling : read current values, ensure integrity, check file available
   File INIFile;
@@ -131,7 +132,7 @@ void setup() {
       iter=1;
       freq=1.0;
       busVoltageThreshold=0.0;
-      currentThreshold=0.0;    
+      currentThreshold=20.0;    
       INIFile.close();
       }
     }
@@ -150,8 +151,8 @@ void setup() {
   // TEMP
   
   // initialize global values
-  delaytime= 1000/freq;
-  MaxCycles=max(1,trunc(SwitchTime*1000/delaytime));
+  delaytime= 1000000/freq;
+  MaxCycles=max(1,trunc(SwitchTime*freq));
 
   Serial.println(F("initialization done."));   
 }
@@ -169,7 +170,8 @@ void FileReadLn(File &ReadFile, char *buffer, size_t len) {
 }
 
 void loop() {
-      
+  StartOfLoopMicros=micros();
+  
   busVoltage_V = ina226.getBusVoltage_V();
   current_mA = -ina226.getCurrent_mA();
 
@@ -296,14 +298,40 @@ if (logging) {
 // All kinds of serial output to support troubleshooting
 Serial.print(" logging ");
 Serial.print(logging);
+Serial.print(" logfile # ");
+Serial.print(iter);
 Serial.print(F(" CyclesCondMet: ")); Serial.print(String(CyclesCondMet));
 Serial.print(F(" CyclesCondNotMet: ")); Serial.print(String(CyclesCondNotMet));
 Serial.print(F(" Bus[V]: ")); Serial.print(String(busVoltage_V,5));
 Serial.print(F(" Current[mA]: ")); Serial.print(current_mA);
 Serial.println();
 
-delay(delaytime);
+// Calculate the elapsed time since the start of the loop
+// and delay the rest of the loop time
+// to ensure the loop time is equal to delaytime  
+unsigned long NowMicros=micros();
+unsigned long MicrosElapsed;
+if (NowMicros>StartOfLoopMicros) {
+  MicrosElapsed=NowMicros-StartOfLoopMicros;
+  }
+else {
+  // we have a rollover of the micros() counter
+  MicrosElapsed=4294967295-StartOfLoopMicros+NowMicros;
+  }
 
+  if (MicrosElapsed<delaytime) {
+  unsigned long RemainingDelay=delaytime-MicrosElapsed;
+  if (RemainingDelay>16383) {
+    // delayMicroseconds() only works well up to 16383 microseconds
+    // so we have to split the delay into two parts
+    delay(RemainingDelay/1000);
+    RemainingDelay=RemainingDelay%1000;
+    delayMicroseconds(RemainingDelay);
+    }
+  else {
+    delayMicroseconds(delaytime-MicrosElapsed);
+    }
+  }
 }
   
 

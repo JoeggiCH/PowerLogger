@@ -18,12 +18,7 @@ To stop measuring
 1) disconnect the load: the logger continues measuring/logging for "SwitchTime" seconds and then stops
 2) disconnect the power source
 
-### IMPORTANT
-Always disconnect the load FIRST, BEFORE disconnecting the power source for 
-the Arduino! Otherwise the logger might loose its power while writing to the SD card, 
-which can cause inconsistent information on the SD card file system. In the worst case, 
-the SD card will become unreadable, must be formatted and the SD card data 
-is lost!
+Note that it is better to disconnect the load before disconnecting the power source for the Arduino. Otherwise the logger might loose its power while writing to the SD card, which can cause inconsistent information on the SD card file system. In the worst case, the SD card will become unreadable, must be formatted and the SD card data is lost!
 
 ## Wiring for Measurements
 
@@ -32,7 +27,7 @@ The INA226 sensor needs to be connected to the source and the load, two configur
 <img src=./images/HiLo%20Wiring.png width="960">
 
 
-If Current+, Current- are NOT (both) connected, the logger will only measure/log the source voltage.
+If either Current+ or Current- are not connected, the logger will only measure/log the source voltage.
 
 ![Diagram](/images/FullDiagram.png)
 
@@ -52,13 +47,11 @@ the number of the measurement cycle; the number is increased for each cycle.
 At each transition from LOGGING to STANDBY, the measurement file is closed and
 the measurement cycle finishes.
 
-During STANDBY mode the logger keeps checking the sensor for a load threshold 
-voltage, above the load threshold voltage measurements will start, i.e. the mode changes
-to "LOGGING" Below the load threshold voltage the logger assumes that the load is not 
-connected yet and the STANDBY mode will continue.
+During STANDBY mode the logger keeps measuring and if the measured values of either 
+the voltage or current are higher than the respective thresholds, the mode changes
+to "LOGGING" - and vice versa.
 
-
-# Configuration File on SD Card
+## Configuration File on SD Card
 
 The logger uses a configuration file called LOGGER.INI, in the root folder of the SD card.
 This text file contains one value (a string representing a number) per line.
@@ -69,47 +62,36 @@ the logger will increase this number.  DEFAULT: 1
 * Second line: measurement frequency, a float. A value of 1.0 means that one measurement is done per second. 
 A frequency of 10 means that 10 measurements are made/logged per second. Fractions are supported as well, e.g. 
 a value of 0.1 means that every 10 seconds a value is logged. DEFAULT: 1.0
-* Third line: Bus threshold voltage, a float. The logger will start measuring/logging data, if the bus
-voltage is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 0
-* Fourth line: load threshold current in mA, a float. The logger will start measuring/logging data, if the current 
-is above this value. See also the section "POWERING THE LOGGER" above. DEFAULT : 0
+* Third line: Bus voltage threshold, a float. DEFAULT : 0.0
+* Fourth line: load current threshold in mA, a float. DEFAULT : 20.0. 
 
+The logger will log to the SD card, if the Bus voltage and the current are both above thresholds. Setting the current threshold to 0.0 means the logger will log irrespective of the current measured; same for the bus voltage threshold. Setting both threshholds to 0.0 means the logger will start logging after a short delay (see SwitchTime in the code; typically 2 secs) and it will continue until the Arduino is disconnected from power. As mentioned above, the risk of doing this is that SD card filesystem becomes inconsistent, i.e. unreadable. 
 
 ## Connecting the Logger to Power
 
-The logger software supports two types of power sources 
+I used the logger with two types of power sources 
 
-1. Independent Power Source: the logger / Arduino is connected to its own power source, which 
-is independent of the power source for the load we want to measure.
-An independent power source can be a powered USB port, which the Arduino is connected to.
-It is also possible to connect an independent power source to the Arduino pins "5V" or "VIN".
+1. Independent Power Source: the logger / Arduino is connected to its "own" power source, which is independent of the power source for the load we want to measure. Such an independent power source can be connected to the Arduino USB, VIN/5V (and GND) pins. 
 
-2. Common Power Source: the logger and the load to be measured use a common power source. 
-One way of achieving this, is to connect the VIN pin of the Arduino to the V+ pin of the INA226 and
-the + pin of the common power source.
+2. Common Power Source: the logger and the load to be measured use a common power source.
 
 
 There are pros and cons of using an Independent Power Source (1)
 
    * PRO: power sources with voltages between 0V and 36V can be measured.
 
-   * PRO: the power source for the load can continue to operate without any (major) impact
-   of the sensor and its measurements. The only minor impact is caused by the additional
-   "shunt" resistor the INA226 requires for its measurement. Minimal impact is desired, 
-   for example, if we want to precisely measure the voltage, currents and power of a 
-   charger charging an accumulator battery.
-
-   * CON: additional wiring, an USB power supply, a battery pack or similar is needed.
+   * CON: an USB power supply, a battery pack or similar, more space is needed.
 
 For a Common Power Source (2)
 
    * PRO: less space and wiring needed.
 
-   * CON: the supported power source voltages are limited by the Arduino, e.g. in the case of the Arduino Nano 
-   Every, the recommended VIN power is between 4.5V and 21V (see MPM3610 specification). 
+   * CON: the supported power source voltages are limited by the Arduino, e.g. in the case of the Arduino Nano Every, the recommended VIN power is between 4.5V and 21V (see MPM3610 specification). 
+
+   * CON: variations of the common power source voltage might impact the measurements.
 
 
-# Hardware Specs
+## Hardware Specs
 
 * [Arduino Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
 * [Arduino Nano Every Schema](https://content.arduino.cc/assets/NANOEveryV3.0_sch.pdf)
@@ -124,13 +106,12 @@ For a Common Power Source (2)
 * [SD Card Holder / RTC Module on bastelgarage.ch](https://www.bastelgarage.ch/micro-sd-data-logger-module-with-rtc)
 * [SD Card Holder / RTC Module on aliexpress.com](https://www.aliexpress.com/item/1005006248586820.html)
 
-# Libraries
-* [wollewald / INA226_WE](https://github.com/wollewald/INA226_WE) on github
-* [INA226 Strom- und Leistungssensor](https://wolles-elektronikkiste.de/ina226) (from the same author but in German)
+## Libraries
+* [wollewald / INA226_WE](https://github.com/wollewald/INA226_WE) on github and [INA226 Strom- und Leistungssensor](https://wolles-elektronikkiste.de/ina226)
 * [Makuna / Rtc](https://github.com/Makuna/Rtc/wiki) on github
 
 
-# Internal Wiring diagram of "Red" INA226 Module
+## Internal Wiring diagram of "Red" INA226 Module
 
 ![Diagram](/images/INA226%20red%20module%20wiring.png)
 
