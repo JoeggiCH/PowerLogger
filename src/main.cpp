@@ -207,11 +207,10 @@ void setup() {
   
   // TEMP
   // temporary definitions, so I don't have to use the INI file for configuring it
-  freq=100.0;
-  busVoltageThreshold=3.0;
-  currentThreshold=0.0;
-  // end of temp section
-  // TEMP
+  // freq=100.0;
+  // busVoltageThreshold=3.0;
+  // currentThreshold=0.0;
+  // end of TEMP section
   
   // initialize global values
   delaytime= 1000000/freq;
