@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <RtcDS1307.h>
+#include <avr/pgmspace.h>
 
 extern RtcDS1307<TwoWire> Rtc;
 extern void printDateTime(const RtcDateTime& dt);
@@ -52,28 +53,90 @@ float freq=1.0;
 unsigned long delaytime;
 unsigned long StartOfLoopMicros;
 
-void FileReadLn(File &ReadFile, char *buffer, size_t len);
+// the code below searches for the longest product of the AVG and CT array components
+// which is below the delaytime
+const byte VECTOR_SIZE = 8;
+const byte MAX_IDX = VECTOR_SIZE - 1;
+
+const unsigned int AVG_VALUES[VECTOR_SIZE] PROGMEM = {
+    1, 4, 16, 64, 128, 256, 512, 1024
+};
+const unsigned int CT_VALUES[VECTOR_SIZE] PROGMEM = {
+    140, 204, 332, 588, 1100, 2116, 4156, 8244
+};
+
+const unsigned int AVG_ENUMS[VECTOR_SIZE] PROGMEM = {
+    AVERAGE_1, AVERAGE_4, AVERAGE_16, AVERAGE_64,
+    AVERAGE_128, AVERAGE_256, AVERAGE_512, AVERAGE_1024
+};
+const unsigned int CT_ENUMS[VECTOR_SIZE] PROGMEM = {
+    CONV_TIME_140, CONV_TIME_204, CONV_TIME_332, CONV_TIME_588,
+    CONV_TIME_1100, CONV_TIME_2116, CONV_TIME_4156, CONV_TIME_8244
+};
+
+const long MIN_PRODUCT_VAL = 140L;       // Calculated from 1 * 140
+const long MAX_PRODUCT_VAL = 8441856L;   // Calculated from 1024 * 8244
+
+void findEnumsMaxProductBelowThreshold(long threshold, averageMode* result_avg_enum, convTime* result_ct_enum) {
+
+    threshold = threshold / 2.0;
+
+    byte best_i = 0;
+    byte best_j = 0;
+
+    if (threshold <= MIN_PRODUCT_VAL) {
+        // Indices remain 0, 0
+    } else if (threshold >= MAX_PRODUCT_VAL) {
+        best_i = MAX_IDX;
+        best_j = MAX_IDX;
+    } else {
+        long maxProductBelowThreshold = MIN_PRODUCT_VAL;
+
+        for (byte i = 0; i < VECTOR_SIZE; ++i) {
+            unsigned int avg_val = pgm_read_word_near(AVG_VALUES + i);
+
+            for (byte j = 0; j < VECTOR_SIZE; ++j) {
+                unsigned int ct_val = pgm_read_word_near(CT_VALUES + j);
+                long currentProduct = (long)avg_val * (long)ct_val;
+
+                if (currentProduct < threshold && currentProduct > maxProductBelowThreshold) {
+                    maxProductBelowThreshold = currentProduct;
+                    best_i = i;
+                    best_j = j;
+                }
+            }
+        }
+    }
+
+    *result_avg_enum = (averageMode)pgm_read_word_near(AVG_ENUMS + best_i);
+    *result_ct_enum = (convTime)pgm_read_word_near(CT_ENUMS + best_j);
+}
+
+void FileReadLn(File &ReadFile, char *buffer, size_t len) {
+  size_t index = 0;
+  while (ReadFile.available() && index < len - 1) {
+      char c = ReadFile.read();
+      if (c == '\n') {
+          break;
+      }
+      buffer[index++] = c;
+  }
+  buffer[index] = '\0';
+}
+
 void measure_loop();
 void reboot() { asm volatile ("jmp 0"); }
 
 void setup() {
   
   Serial.begin(460800);
-
+  while (!Serial);
   Serial.println();Serial.println();
-  Serial.println(F("Initializing INA226 ..."));
-  Wire.begin();
-  ina226.init();
-  // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
-  ina226.setResistorRange(0.002, 20.0);
-  ina226.setCorrectionFactor(0.947818013);
-  ina226.readAndClearFlags();
-  ina226.waitUntilConversionCompleted();
 
   Serial.println(F("Initializing DS1307 ..."));
   rtcsetup();
 
-  Serial.print(F("Initializing SD card..."));
+  Serial.print(F("\nInitializing SD card..."));
   if (!SD.begin(chipSelect)) {
     Serial.println(F("failed"));
     delay(10000);
@@ -132,7 +195,7 @@ void setup() {
       iter=1;
       freq=1.0;
       busVoltageThreshold=0.0;
-      currentThreshold=20.0;    
+      currentThreshold=10.0;    
       INIFile.close();
       }
     }
@@ -144,34 +207,52 @@ void setup() {
   
   // TEMP
   // temporary definitions, so I don't have to use the INI file for configuring it
-  freq=0.2;
-  busVoltageThreshold=5.0;
-  currentThreshold=10.0;
+  freq=100.0;
+  busVoltageThreshold=3.0;
+  currentThreshold=0.0;
   // end of temp section
   // TEMP
   
   // initialize global values
   delaytime= 1000000/freq;
   MaxCycles=max(1,trunc(SwitchTime*freq));
+  Serial.print(F("delaytime: "));
+  Serial.println(delaytime);
+  Serial.print(F("microseconds"));
+
+   // find the longest product of AVG and CT which is below delaytime
+
+  Serial.println(F("\nInitializing INA226 ..."));
+  Wire.begin();
+  ina226.init();
+  // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
+  ina226.setResistorRange(0.002, 20.0);
+  // correction factor for my "red" module/shield 
+  ina226.setCorrectionFactor(0.947818013);
+  ina226.readAndClearFlags();
+  ina226.waitUntilConversionCompleted();
+
+  averageMode avgResult;
+  convTime ctResult;
+  // 3900 microseconds is the typical time it takes to do the loop - (with 140 microseconds conversion and 1 average) - and no SD Disk
+  // With SD disk and no flush, it takes about 7500 microseconds (although I could not measure this yet)
+  findEnumsMaxProductBelowThreshold(delaytime-7500, &avgResult, &ctResult);
+  ina226.setAverage(avgResult);
+  ina226.setConversionTime(ctResult);
+  Serial.print("  Avg Enum (HEX): 0x");
+  Serial.print(avgResult, HEX);
+  Serial.print("  CT Enum (HEX): 0x");
+  Serial.println(ctResult, HEX);
+  ina226.setMeasureMode(TRIGGERED);
 
   Serial.println(F("initialization done."));   
-}
-
-void FileReadLn(File &ReadFile, char *buffer, size_t len) {
-  size_t index = 0;
-  while (ReadFile.available() && index < len - 1) {
-      char c = ReadFile.read();
-      if (c == '\n') {
-          break;
-      }
-      buffer[index++] = c;
-  }
-  buffer[index] = '\0';
 }
 
 void loop() {
   StartOfLoopMicros=micros();
   
+  ina226.startSingleMeasurement();
+  ina226.readAndClearFlags();
   busVoltage_V = ina226.getBusVoltage_V();
   current_mA = -ina226.getCurrent_mA();
 
@@ -295,16 +376,17 @@ if (logging) {
   measure_loop();
   }
 
-// All kinds of serial output to support troubleshooting
-Serial.print(" logging ");
-Serial.print(logging);
-Serial.print(" logfile # ");
-Serial.print(iter);
-Serial.print(F(" CyclesCondMet: ")); Serial.print(String(CyclesCondMet));
-Serial.print(F(" CyclesCondNotMet: ")); Serial.print(String(CyclesCondNotMet));
-Serial.print(F(" Bus[V]: ")); Serial.print(String(busVoltage_V,5));
-Serial.print(F(" Current[mA]: ")); Serial.print(current_mA);
-Serial.println();
+if (delaytime>=1000000){
+  Serial.print(" logging ");
+  Serial.print(logging);
+  Serial.print(" logfile # ");
+  Serial.print(iter);
+  Serial.print(F(" CyclesCondMet: ")); Serial.print(String(CyclesCondMet));
+  Serial.print(F(" CyclesCondNotMet: ")); Serial.print(String(CyclesCondNotMet));
+  Serial.print(F(" Bus[V]: ")); Serial.print(String(busVoltage_V,5));
+  Serial.print(F(" Current[mA]: ")); Serial.print(current_mA);
+  Serial.println();
+  }
 
 // Calculate the elapsed time since the start of the loop
 // and delay the rest of the loop time
@@ -318,20 +400,31 @@ else {
   // we have a rollover of the micros() counter
   MicrosElapsed=4294967295-StartOfLoopMicros+NowMicros;
   }
-
+  
   if (MicrosElapsed<delaytime) {
-  unsigned long RemainingDelay=delaytime-MicrosElapsed;
-  if (RemainingDelay>16383) {
-    // delayMicroseconds() only works well up to 16383 microseconds
-    // so we have to split the delay into two parts
-    delay(RemainingDelay/1000);
-    RemainingDelay=RemainingDelay%1000;
-    delayMicroseconds(RemainingDelay);
+    unsigned long RemainingDelay=delaytime-MicrosElapsed;
+
+    if (RemainingDelay>16383) {
+      // delayMicroseconds() only works well up to 16383 microseconds
+      // so we have to split the delay into two parts
+      delay(RemainingDelay/1000);
+      RemainingDelay=RemainingDelay%1000;
+      delayMicroseconds(RemainingDelay);
+      }
+    else {
+      delayMicroseconds(delaytime-MicrosElapsed);
+      }
+      //Serial.print("!");
+      //Serial.println(MicrosElapsed);
+      //Serial.print("!");
     }
   else {
-    delayMicroseconds(delaytime-MicrosElapsed);
+    // delaytime was too short
+    Serial.print("X");
+    // Serial.println(MicrosElapsed);
     }
-  }
+    //delay(1000);
+
 }
   
 
@@ -365,5 +458,5 @@ void measure_loop() {
   logfile.print(String(current_mA,5));    logfile.print(",");
   logfile.print(String(power_mW,5));      logfile.println();
 
-  logfile.flush();
+  //logfile.flush();
 }
