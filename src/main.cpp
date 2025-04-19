@@ -34,9 +34,6 @@ int iter;
 float busVoltageThreshold;
 float currentThreshold;
 
-// used to count the number of cycles (not) meeeting the threshold conditions
-int CyclesCondMet=0, CyclesCondNotMet=0;
-
 // values measured by INA226
 float shuntVoltage_mV = 0.0;
 float loadVoltage_V = 0.0;
@@ -44,17 +41,38 @@ float busVoltage_V = 0.0;
 float current_mA = 0.0;
 float power_mW = 0.0;
 
+// frequency of the measurements
+float freq=1.0;
+
+//delaytime is the time between two measurements, i.e. is calculated as 1 / freq (in microseconds). 
+unsigned long delaytime;
+
 // Other global variables
 int SwitchTime=2.0;
 int MaxCycles;
 bool logging=false;
 char status[10];
-float freq=1.0;
-unsigned long delaytime;
 unsigned long StartOfLoopMicros;
+// used to count the number of cycles (not) meeeting the threshold conditions
+int CyclesCondMet=0, CyclesCondNotMet=0;
 
-// the code below searches for the longest product of the AVG and CT array components
-// which is below the delaytime
+
+/* 
+The code below including findEnumsMaxProductBelowThreshold() is used to set the average 
+mode and conversion time of the INA226 chip, based on a given delaytime. 
+The idea is to run the INA226 in "TRIGGERED" mode, and to optimally use the available delaytime
+to collect as many samples as possible.
+The INA226 averages the samples and these averages are logged to the SD card.
+
+Interestingly averaging in the INA226 happens on two levels - on the level of the Delta Sigma ADC, 
+which operates at a frequency of 500kHz, collects multiple samples during a conversion time and 
+averages them electronically.The results of each conversion are then averaged on a second level using
+a digital calculation function. The number of second level averages is controlled by the averageMode.
+
+The function findEnumsMaxProductBelowThreshold()searches for the maximum product of the 
+AVG and CT array components, which is below the delaytime. The results are then mapped to the 
+corresponding enum values used in the INA226_WE library.
+*/
 const byte VECTOR_SIZE = 8;
 const byte MAX_IDX = VECTOR_SIZE - 1;
 
@@ -112,6 +130,7 @@ void findEnumsMaxProductBelowThreshold(long threshold, averageMode* result_avg_e
     *result_ct_enum = (convTime)pgm_read_word_near(CT_ENUMS + best_j);
 }
 
+// used for INIFile ingestion
 void FileReadLn(File &ReadFile, char *buffer, size_t len) {
   size_t index = 0;
   while (ReadFile.available() && index < len - 1) {
@@ -124,7 +143,7 @@ void FileReadLn(File &ReadFile, char *buffer, size_t len) {
   buffer[index] = '\0';
 }
 
-void measure_loop();
+// this works on the Arduino Nano Every; compatibility with other boards is not guaranteed
 void reboot() { asm volatile ("jmp 0"); }
 
 void setup() {
@@ -205,8 +224,7 @@ void setup() {
     freq=1.0;
     }
   
-  // TEMP
-  // temporary definitions, so I don't have to use the INI file for configuring it
+  // Temporary definitions, so I don't have to use the INI file during debugging
   // freq=100.0;
   // busVoltageThreshold=3.0;
   // currentThreshold=0.0;
@@ -219,9 +237,7 @@ void setup() {
   Serial.println(delaytime);
   Serial.print(F("microseconds"));
 
-   // find the longest product of AVG and CT which is below delaytime
-
-  Serial.println(F("\nInitializing INA226 ..."));
+  Serial.print(F("\nInitializing INA226 ..."));
   Wire.begin();
   ina226.init();
   // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
@@ -231,6 +247,7 @@ void setup() {
   ina226.readAndClearFlags();
   ina226.waitUntilConversionCompleted();
 
+  // find the longest product of AVG and CT which is below delaytime
   averageMode avgResult;
   convTime ctResult;
   // 3900 microseconds is the typical time it takes to do the loop - (with 140 microseconds conversion and 1 average) - and no SD Disk
@@ -244,218 +261,210 @@ void setup() {
   Serial.println(ctResult, HEX);
   ina226.setMeasureMode(TRIGGERED);
 
-  Serial.println(F("initialization done."));   
+  Serial.println(F(" ok"));   
+  Serial.println(F("Starting Measurements..."));
 }
 
 void loop() {
   StartOfLoopMicros=micros();
-  
-  ina226.startSingleMeasurement();
-  ina226.readAndClearFlags();
-  busVoltage_V = ina226.getBusVoltage_V();
-  current_mA = -ina226.getCurrent_mA();
 
-  if ((abs(busVoltage_V)>=busVoltageThreshold && (abs(current_mA))>=currentThreshold) || (ina226.overflow)) {
-    // condition met, so CyclesCondMet is increased up to a maximum of MaxCycles+1
-    if (CyclesCondMet<MaxCycles+1) {
-      CyclesCondMet++;
-    }
-    CyclesCondNotMet=0;
-    //Serial.print("X");
-    }
-  else {
-    // threshold conditions not met
-    // CyclesCondNotMet increased up to a maximum of MaxCycles+1
-    if (CyclesCondNotMet<MaxCycles+1) {
-      CyclesCondNotMet++;
-      }
-    CyclesCondMet=0;
-    //Serial.print("_");
-    } 
+  // Trigger measurement and fetch results
+    ina226.startSingleMeasurement();
+    ina226.readAndClearFlags();
 
-  if (!logging && (CyclesCondMet==MaxCycles)) {
-    // We weren't logging so far, but for MaxCycles the logging conditions were met
-    // so we transition to logging 
+    // Bus Voltage is measured between GND and V+ (of the module, VBUS of the INA226 chip)
+    // Shunt Voltage is measured between Current- and Current+
+    busVoltage_V = ina226.getBusVoltage_V();
+    current_mA = -ina226.getCurrent_mA();
+    shuntVoltage_mV = ina226.getShuntVoltage_mV();
+    power_mW = ina226.getBusPower();
 
-    logging=true;
-    CyclesCondMet=MaxCycles+1;
+    // "loadVoltage" is the Bus Voltage minus the Shunt Voltage
+    loadVoltage_V  = busVoltage_V - (shuntVoltage_mV/1000);
 
-    // handle invalid RTC info
-    if (!Rtc.IsDateTimeValid()) 
-    {
-        if (!wasError("IsDateTimeValid in loop()"))
-        {
-            // Common Causes:
-            //    1) the battery on the device is low or even missing and the power line was disconnected
-            Serial.println(F("Lost confidence in RTC DateTime!"));
+    if(!ina226.overflow){
+        strcpy(status,"ok");  
         }
-    }
-
-    // prep datestring for logging
-    char datestring[21];
-    RtcDateTime now = Rtc.GetDateTime();
-    if (!wasError("GetDateTime in loop")) {
-
-      snprintf_P(datestring, 
-              countof(datestring),
-              PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-              now.Day(),
-              now.Month(),
-              now.Year(),
-              now.Hour(),
-              now.Minute(),
-              now.Second() );
-    }
-
-    // open new logfile
-    char logfn[20];
-    snprintf(logfn, sizeof(logfn), "log%05d.csv", iter);
-
-    logfile=SD.open(logfn,FILE_WRITE);
-    if (logfile){
-      Serial.print(F("\nWriting to "));
-      Serial.println(logfn);  
-      Serial.println(datestring);
-      logfile.print(F("Data measured from, "));
-      logfile.println(datestring);
-      logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
-      }
-      else{
-        Serial.println(F("issue writing logfile to SD Card"));
-        // wait 10s; usually the SD card is missing, let's wait 10 secs 
-        // and then re-start like after a hardware reset
-        delay(10000);
-        reboot();
-      } 
-
-    // write updated INI File; 
-    // include updated iter value - so, logfile names remain unique
-    SD.remove(INIfilename);
-    File INIFile;
-    INIFile = SD.open(INIfilename, FILE_WRITE);
-    if (INIFile){
-      Serial.print(F("Writing inifile "));
-      Serial.print(INIfilename);
-      Serial.print(F(" with iter="));
-      Serial.print(iter);
-      Serial.print(F(", freq="));
-      Serial.print(freq, 10);
-      Serial.print(F(", busVoltageThreshold="));
-      Serial.print(busVoltageThreshold, 10);
-      Serial.print(F(", currentThreshold="));
-      Serial.println(currentThreshold, 10);
-      INIFile.println(String(iter));
-      INIFile.println(String(freq,10));
-      INIFile.println(String(busVoltageThreshold,10));
-      INIFile.println(String(currentThreshold,10));
-      INIFile.close();
-      }
     else{
-      Serial.println(F("issue writing inifile to SD Card"));
-      delay(10000);
-      reboot();
-    }
-
-  }
-
-  if (logging && (CyclesCondNotMet==MaxCycles)) {
-    // We are currently logging, however, for MaxCycles the logging conditions were not met
-    // so we transition to the non-logging state, close the logfile, increase logfile generation number iter
-    // and set CyclesCondNotMet is set to MaxCycles+1
-    Serial.println(F("\nclosing logfile"));
-    logfile.close();
-    iter++;
-    CyclesCondNotMet=MaxCycles+1;
-    logging=false;
-  }
-
-
-// after all this management we do some real work :-)
-if (logging) {
-  measure_loop();
-  }
-
-if (delaytime>=1000000){
-  Serial.print(" logging ");
-  Serial.print(logging);
-  Serial.print(" logfile # ");
-  Serial.print(iter);
-  Serial.print(F(" CyclesCondMet: ")); Serial.print(String(CyclesCondMet));
-  Serial.print(F(" CyclesCondNotMet: ")); Serial.print(String(CyclesCondNotMet));
-  Serial.print(F(" Bus[V]: ")); Serial.print(String(busVoltage_V,5));
-  Serial.print(F(" Current[mA]: ")); Serial.print(current_mA);
-  Serial.println();
-  }
-
-// Calculate the elapsed time since the start of the loop
-// and delay the rest of the loop time
-// to ensure the loop time is equal to delaytime  
-unsigned long NowMicros=micros();
-unsigned long MicrosElapsed;
-if (NowMicros>StartOfLoopMicros) {
-  MicrosElapsed=NowMicros-StartOfLoopMicros;
-  }
-else {
-  // we have a rollover of the micros() counter
-  MicrosElapsed=4294967295-StartOfLoopMicros+NowMicros;
-  }
+      strcpy(status,"overflow");  
+      }
   
-  if (MicrosElapsed<delaytime) {
-    unsigned long RemainingDelay=delaytime-MicrosElapsed;
-
-    if (RemainingDelay>16383) {
-      // delayMicroseconds() only works well up to 16383 microseconds
-      // so we have to split the delay into two parts
-      delay(RemainingDelay/1000);
-      RemainingDelay=RemainingDelay%1000;
-      delayMicroseconds(RemainingDelay);
+  // determine when to start/ stop logging; manage transitions
+    if ((abs(busVoltage_V)>=busVoltageThreshold && (abs(current_mA))>=currentThreshold) || (ina226.overflow)) {
+      // condition met, so CyclesCondMet is increased up to a maximum of MaxCycles+1
+      if (CyclesCondMet<MaxCycles+1) {
+        CyclesCondMet++;
+      }
+      CyclesCondNotMet=0;
       }
     else {
-      delayMicroseconds(delaytime-MicrosElapsed);
+      // threshold conditions not met
+      // CyclesCondNotMet increased up to a maximum of MaxCycles+1
+      if (CyclesCondNotMet<MaxCycles+1) {
+        CyclesCondNotMet++;
+        }
+      CyclesCondMet=0;
+      } 
+
+    if (!logging && (CyclesCondMet==MaxCycles)) {
+      // We weren't logging so far, but for MaxCycles the logging conditions were met
+      // so we transition to logging 
+
+      logging=true;
+      CyclesCondMet=MaxCycles+1;
+
+      // handle invalid RTC info
+      if (!Rtc.IsDateTimeValid()) 
+      {
+          if (!wasError("IsDateTimeValid in loop()"))
+          {
+              // Common Causes:
+              //    1) the battery on the device is low or even missing and the power line was disconnected
+              Serial.println(F("Lost confidence in RTC DateTime!"));
+          }
       }
-      //Serial.print("!");
-      //Serial.println(MicrosElapsed);
-      //Serial.print("!");
-    }
-  else {
-    // delaytime was too short
-    Serial.print("X");
-    // Serial.println(MicrosElapsed);
-    }
-    //delay(1000);
 
-}
-  
+      // prep datestring for the logfile header
+      char datestring[21];
+      RtcDateTime now = Rtc.GetDateTime();
+      if (!wasError("GetDateTime in loop")) {
 
-void measure_loop() {
-
-// Bus Voltage is measured between GND and V+ (of the module, VBUS of the INA226 chip)
-// Shunt Voltage is measured between Current- and Current+
-
-  //ina226.readAndClearFlags();
-  shuntVoltage_mV = ina226.getShuntVoltage_mV();
-  busVoltage_V = ina226.getBusVoltage_V();
-  current_mA = -ina226.getCurrent_mA();
-  power_mW = ina226.getBusPower();
-
-  // "loadVoltage" is the Bus Voltage minus the Shunt Voltage
-  
-  loadVoltage_V  = busVoltage_V - (shuntVoltage_mV/1000);
-    
-
-  if(!ina226.overflow){
-      strcpy(status,"ok");  
+        snprintf_P(datestring, 
+                countof(datestring),
+                PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+                now.Day(),
+                now.Month(),
+                now.Year(),
+                now.Hour(),
+                now.Minute(),
+                now.Second() );
       }
-  else{
-    strcpy(status,"overflow");  
-    }
-  
-  logfile.print(millis());                logfile.print(",");
-  logfile.print(micros());                logfile.print(",");
-  logfile.print(status);                  logfile.print(",");
-  logfile.print(String(loadVoltage_V,5)); logfile.print(",");
-  logfile.print(String(current_mA,5));    logfile.print(",");
-  logfile.print(String(power_mW,5));      logfile.println();
 
-  //logfile.flush();
-}
+      // open new logfile
+      char logfn[20];
+      snprintf(logfn, sizeof(logfn), "log%05d.csv", iter);
+
+      logfile=SD.open(logfn,FILE_WRITE);
+      if (logfile){
+        Serial.print(F("\nWriting to "));
+        Serial.println(logfn);  
+        Serial.println(datestring);
+        logfile.print(F("Data measured from, "));
+        logfile.println(datestring);
+        logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
+        }
+        else{
+          Serial.println(F("issue writing logfile to SD Card"));
+          // wait 10s; usually the SD card is missing, let's wait 10 secs 
+          // and then re-start like after a hardware reset
+          delay(10000);
+          reboot();
+        } 
+
+      // write updated INI File; 
+      // include updated iter value - so, logfile names remain unique
+      SD.remove(INIfilename);
+      File INIFile;
+      INIFile = SD.open(INIfilename, FILE_WRITE);
+      if (INIFile){
+        Serial.print(F("Writing inifile "));
+        Serial.print(INIfilename);
+        Serial.print(F(" with iter="));
+        Serial.print(iter);
+        Serial.print(F(", freq="));
+        Serial.print(freq, 10);
+        Serial.print(F(", busVoltageThreshold="));
+        Serial.print(busVoltageThreshold, 10);
+        Serial.print(F(", currentThreshold="));
+        Serial.println(currentThreshold, 10);
+        INIFile.println(String(iter));
+        INIFile.println(String(freq,10));
+        INIFile.println(String(busVoltageThreshold,10));
+        INIFile.println(String(currentThreshold,10));
+        INIFile.close();
+        }
+      else{
+        Serial.println(F("issue writing inifile to SD Card"));
+        delay(10000);
+        reboot();
+      }
+
+    }
+
+    if (logging && (CyclesCondNotMet==MaxCycles)) {
+      // We are currently logging, however, for MaxCycles the logging conditions were not met
+      // so we transition to the non-logging state, close the logfile, increase logfile generation number iter
+      // and set CyclesCondNotMet is set to MaxCycles+1
+      Serial.println(F("\nclosing logfile"));
+      logfile.close();
+      iter++;
+      CyclesCondNotMet=MaxCycles+1;
+      logging=false;
+    }
+
+  // after all this management we do some real work :-)
+    if (logging) {
+      logfile.print(millis());                logfile.print(",");
+      logfile.print(micros());                logfile.print(",");
+      logfile.print(status);                  logfile.print(",");
+      logfile.print(String(loadVoltage_V,5)); logfile.print(",");
+      logfile.print(String(current_mA,5));    logfile.print(",");
+      logfile.print(String(power_mW,5));      logfile.println();
+
+      // flushing takes considerable time, so we rely on the SD library to do this from time to time
+      //logfile.flush();
+      }
+
+  // if we have enough time, we print measurements to the serial monitor as well
+    if (delaytime>=1000000){
+      Serial.print(" logging ");
+      Serial.print(logging);
+      Serial.print(" logfile # ");
+      Serial.print(iter);
+      Serial.print(F(" CyclesCondMet: ")); Serial.print(String(CyclesCondMet));
+      Serial.print(F(" CyclesCondNotMet: ")); Serial.print(String(CyclesCondNotMet));
+      Serial.print(F(" Bus[V]: ")); Serial.print(String(busVoltage_V,5));
+      Serial.print(F(" Current[mA]: ")); Serial.print(current_mA);
+      Serial.println();
+      }
+
+  // determine how much time we have left in the loop and how long to wait
+  // time up to this point can vary quite a bit, depending on the INA226 settings, SD card write operations etc
+
+    // Calculate the elapsed time since the start of the loop
+    // and delay the rest of the loop time to ensure the loop time is equal to delaytime  
+    unsigned long NowMicros=micros();
+    unsigned long MicrosElapsed;
+    if (NowMicros>StartOfLoopMicros) {
+      MicrosElapsed=NowMicros-StartOfLoopMicros;
+      }
+    else {
+      // we have a rollover of the micros() counter
+      MicrosElapsed=4294967295-StartOfLoopMicros+NowMicros;
+      }
+      
+    if (MicrosElapsed<delaytime) {
+      // we have time left in the loop!
+      unsigned long RemainingDelay=delaytime-MicrosElapsed;
+
+      if (RemainingDelay>16383) {
+        // delayMicroseconds() only works well up to 16383 microseconds
+        // so we have to split the delay into two parts
+        delay(RemainingDelay/1000);
+        RemainingDelay=RemainingDelay%1000;
+        delayMicroseconds(RemainingDelay);
+        }
+      else {
+        delayMicroseconds(delaytime-MicrosElapsed);
+        }
+        //Serial.print("!");
+        //Serial.println(MicrosElapsed);
+        //Serial.print("!");
+      }
+    else {
+      // delaytime was too short
+      Serial.print("X");
+      // Serial.println(MicrosElapsed);
+      }
+  } // end of loop()
+  

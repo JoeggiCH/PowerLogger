@@ -29,8 +29,6 @@ The INA226 sensor needs to be connected to the source and the load, two configur
 
 If either Current+ or Current- are not connected, the logger will only measure/log the source voltage.
 
-![Diagram](/images/FullDiagram.png)
-
 ## Logger Modes
 
 The logger can be in one of two modes
@@ -53,10 +51,7 @@ to "LOGGING" - and vice versa.
 
 ## Configuration File on SD Card
 
-The logger uses a configuration file called LOGGER.INI, in the root folder of the SD card.
-This text file contains one value (a string representing a number) per line.
-If there is no LOGGER.INI file on the SD card, the logger will create it - using default values.
-
+The logger uses a configuration file called LOGGER.INI, in the root folder of the SD card. This text file contains one value (a string representing a number) per line. If there is no LOGGER.INI file on the SD card, the logger will create it - using default values. File Format:
 * First line: next measurement cycle number, an integer. With each transition from "standby" to "measure"
 the logger will increase this number.  DEFAULT: 1
 * Second line: measurement frequency, a float. A value of 1.0 means that one measurement is done per second. 
@@ -65,7 +60,7 @@ a value of 0.1 means that every 10 seconds a value is logged. DEFAULT: 1.0
 * Third line: Bus voltage threshold, a float. DEFAULT : 0.0
 * Fourth line: load current threshold in mA, a float. DEFAULT : 20.0. 
 
-The logger will log to the SD card, if the Bus voltage and the current are both above thresholds. Setting the current threshold to 0.0 means the logger will log irrespective of the current measured; same for the bus voltage threshold. Setting both threshholds to 0.0 means the logger will start logging after a short delay (see SwitchTime in the code; typically 2 secs) and it will continue until the Arduino is disconnected from power. As mentioned above, the risk of doing this is that SD card filesystem becomes inconsistent, i.e. unreadable. 
+The logger will log to the SD card, if the Bus voltage and the current are both above thresholds. Setting the current threshold to 0.0 means the logger will log irrespective of the current measured; same for the bus voltage threshold. Setting both threshholds to 0.0 means the logger will start logging after a short delay (see SwitchTime in the code; typically 2 secs) and it will continue until the Arduino is disconnected from power. As mentioned above, the risk of doing this is that the SD card filesystem becomes inconsistent, i.e. unreadable. 
 
 ## Connecting the Logger to Power
 
@@ -75,14 +70,13 @@ I used the logger with two types of power sources
 
 2. Common Power Source: the logger and the load to be measured use a common power source.
 
-
 There are pros and cons of using an Independent Power Source (1)
 
    * PRO: power sources with voltages between 0V and 36V can be measured.
 
    * CON: an USB power supply, a battery pack or similar, more space is needed.
 
-For a Common Power Source (2)
+and for a Common Power Source (2)
 
    * PRO: less space and wiring needed.
 
@@ -110,8 +104,10 @@ For a Common Power Source (2)
 * [wollewald / INA226_WE](https://github.com/wollewald/INA226_WE) on github and [INA226 Strom- und Leistungssensor](https://wolles-elektronikkiste.de/ina226)
 * [Makuna / Rtc](https://github.com/Makuna/Rtc/wiki) on github
 
+## Wiring Diagram
+![Diagram](/images/FullDiagram.png)
 
-## Internal Wiring diagram of "Red" INA226 Module
+## Internal Wiring diagram of "Red" INA226 Shield/Module
 
 ![Diagram](/images/INA226%20red%20module%20wiring.png)
 
