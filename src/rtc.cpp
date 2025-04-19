@@ -50,6 +50,7 @@ bool wasError(const char* errorTopic = "")
 
 void rtcsetup () 
 {
+
     Serial.print(F("This code was compiled on: here "));
     Serial.print(__DATE__);
     Serial.print(" ");

@@ -58,16 +58,18 @@ int CyclesCondMet=0, CyclesCondNotMet=0;
 
 
 /* 
-The code below including findEnumsMaxProductBelowThreshold() is used to set the average 
-mode and conversion time of the INA226 chip, based on a given delaytime. 
+The code below, up to and including findEnumsMaxProductBelowThreshold(), is used to set 
+the average mode and conversion time of the INA226 chip, based on a given delaytime. 
+
 The idea is to run the INA226 in "TRIGGERED" mode, and to optimally use the available delaytime
-to collect as many samples as possible.
-The INA226 averages the samples and these averages are logged to the SD card.
+to collect as many samples as possible. The INA226 averages all samples and these averages are 
+logged to the SD card.
 
 Interestingly averaging in the INA226 happens on two levels - on the level of the Delta Sigma ADC, 
-which operates at a frequency of 500kHz, collects multiple samples during a conversion time and 
-averages them electronically.The results of each conversion are then averaged on a second level using
-a digital calculation function. The number of second level averages is controlled by the averageMode.
+which operates at a frequency of 500kHz, collects multiple samples during a "conversion" and 
+averages them electronically.The time allowed for the conversion is the conversionTime, CT.
+The results of each conversion are then averaged on a second level using a digital calculation 
+function. The number of second level averages is controlled by the averageMode, AVG.
 
 The function findEnumsMaxProductBelowThreshold()searches for the maximum product of the 
 AVG and CT array components, which is below the delaytime. The results are then mapped to the 
