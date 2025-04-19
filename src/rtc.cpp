@@ -48,14 +48,14 @@ bool wasError(const char* errorTopic = "")
 }
 
 
-void rtcsetup () 
+void rtcsetup (char const *compile_date, char const *compile_time) 
 {
 
-    Serial.print(F("This code was compiled on: here "));
-    Serial.print(__DATE__);
-    Serial.print(" ");
-    Serial.println(__TIME__);
-    RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
+    //Serial.print(F("Main.cpp was compiled on: here "));
+    //Serial.print(compile_date);
+    //Serial.print(" ");
+    //Serial.println(compile_time);
+    RtcDateTime compiled = RtcDateTime(compile_date, compile_time);
 
     Rtc.Begin();
     #if defined(WIRE_HAS_TIMEOUT)
@@ -94,7 +94,6 @@ void rtcsetup ()
 
         Serial.print(F("Current date on RTC:"));
         printDateTime(now);
-        Serial.println();
 
         if (now < compiled)
         {
@@ -103,7 +102,7 @@ void rtcsetup ()
         }
         else if (now >= compiled)
         {
-            Serial.println(F("RTC datetime >= compile datetime, this is expected"));
+            Serial.println(F("; RTC > compile datetime, as expected; init ok"));
         }
     }
 

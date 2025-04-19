@@ -9,7 +9,8 @@
 extern RtcDS1307<TwoWire> Rtc;
 extern void printDateTime(const RtcDateTime& dt);
 extern bool wasError(const char* errorTopic = "");
-extern void rtcsetup ();
+extern void rtcsetup (char const *compile_date, char const *compile_time); 
+
 
 // for INA226
 #define I2C_ADDRESS 0x40
@@ -154,10 +155,10 @@ void setup() {
   while (!Serial);
   Serial.println();Serial.println();
 
-  Serial.println(F("Initializing DS1307 ..."));
-  rtcsetup();
+  Serial.print(F("Initializing DS1307 ..."));
+  rtcsetup(__DATE__,__TIME__);
 
-  Serial.print(F("\nInitializing SD card..."));
+  Serial.print(F("Initializing SD card..."));
   if (!SD.begin(chipSelect)) {
     Serial.println(F("failed"));
     delay(10000);
@@ -186,7 +187,7 @@ void setup() {
       if (atof(buffer)>0.0){
         freq=atof(buffer);
       }
-      // the voltage threshold
+      // the Bus voltage threshold
       FileReadLn(INIFile,buffer,sizeof(buffer));
       if (atof(buffer)>0.0) {
         busVoltageThreshold=atof(buffer);
@@ -212,7 +213,7 @@ void setup() {
       iter++;
       }
     else {    
-      Serial.println(F("Ini file too big; will write a new INI file"));
+      Serial.println(F("INI file too big; will write a new INI file"));
       iter=1;
       freq=1.0;
       busVoltageThreshold=0.0;
@@ -227,7 +228,7 @@ void setup() {
     }
   
   // Temporary definitions, so I don't have to use the INI file during debugging
-  // freq=100.0;
+  // freq=1.0;
   // busVoltageThreshold=3.0;
   // currentThreshold=0.0;
   // end of TEMP section
@@ -236,10 +237,10 @@ void setup() {
   delaytime= 1000000/freq;
   MaxCycles=max(1,trunc(SwitchTime*freq));
   Serial.print(F("delaytime: "));
-  Serial.println(delaytime);
-  Serial.print(F("microseconds"));
+  Serial.print(delaytime);
+  Serial.println(F(" microseconds"));
 
-  Serial.print(F("\nInitializing INA226 ..."));
+  Serial.print(F("Initializing INA226 ..."));
   Wire.begin();
   ina226.init();
   // the "red" module/shield uses a 0.002 Ohm shunt and supports measurements up to 20A
@@ -257,14 +258,13 @@ void setup() {
   findEnumsMaxProductBelowThreshold(delaytime-7500, &avgResult, &ctResult);
   ina226.setAverage(avgResult);
   ina226.setConversionTime(ctResult);
-  Serial.print("  Avg Enum (HEX): 0x");
+  Serial.print("  AVG (HEX): 0x");
   Serial.print(avgResult, HEX);
-  Serial.print("  CT Enum (HEX): 0x");
-  Serial.println(ctResult, HEX);
+  Serial.print("  CT (HEX): 0x");
+  Serial.print(ctResult, HEX);
   ina226.setMeasureMode(TRIGGERED);
-
-  Serial.println(F(" ok"));   
-  Serial.println(F("Starting Measurements..."));
+  Serial.println(F(" - ok"));   
+  Serial.println(F("\nStarting Measurements..."));
 }
 
 void loop() {
