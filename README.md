@@ -1,6 +1,6 @@
 # PowerLogger
 
-This project implements a data logger for electrical voltage, current and power readings. 
+This project implements a data logger for electrical voltage (up to 36V), current (up to 20A) and power readings. 
 
 The logger consists of
 - a TI INA226 chip to measure the electrical values,
@@ -87,15 +87,5 @@ The logger will log to the SD card, if the Bus voltage and the current are both 
 * The INA226 and the DS1307 connect via I2C to the Arduino.
 * The SD card is connected via SPI.
 
-
-The SPI terminology can be a bit confusing because the signals were renamed to avoid the master-slave analogy:
-
-| Master/Slave (OLD) |	Controller/Peripheral (NEW)|
-|---|---|
-|Master In Slave Out (MISO)	| Controller In, Peripheral Out (CIPO)|
-|Master Out Slave In (MOSI)	| Controller Out Peripheral In (COPI)|
-|Slave Select pin (SS)	| Chip Select Pin (CS)|
-
-
-[More](MORE.md)
+[More details](MORE.md)
 

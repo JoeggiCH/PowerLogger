@@ -13,6 +13,15 @@ findEnumsMaxProductBelowThreshold() only finds the optimum parameters for the IN
 
 findEnumsMaxProductBelowThreshold() was mostly written by gemini.google.com :-)
 
+The SPI terminology can be a bit confusing because the signals were renamed to avoid the master-slave analogy:
+
+| Master/Slave (OLD) |	Controller/Peripheral (NEW)|
+|---|---|
+|Master In Slave Out (MISO)	| Controller In, Peripheral Out (CIPO)|
+|Master Out Slave In (MOSI)	| Controller Out Peripheral In (COPI)|
+|Slave Select pin (SS)	| Chip Select Pin (CS)|
+
+
 ### Connecting the Logger to Power
 
 I used the logger with two types of power sources 
@@ -42,4 +51,4 @@ and for a Common Power Source (2)
 - Use a more modern microcontroller, which includes a SD card and a RTC on board
 - Connect multiple INA226 devices to allow multiple measurements in parallel
 - Replace the INA226 with a chip, which takes less time to measure voltage and current
-- Build a logger with a BLE interface transmitting measurement values to another microcontroller with a display
+- Build a logger with a BLE or WLAN interface transmitting measurement values to another microcontroller with a display
