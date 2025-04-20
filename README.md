@@ -62,29 +62,6 @@ a value of 0.1 means that every 10 seconds a value is logged. DEFAULT: 1.0
 
 The logger will log to the SD card, if the Bus voltage and the current are both above thresholds. Setting the current threshold to 0.0 means the logger will log irrespective of the current measured; same for the bus voltage threshold. Setting both threshholds to 0.0 means the logger will start logging after a short delay (see SwitchTime in the code; typically 2 secs) and it will continue until the Arduino is disconnected from power. As mentioned above, the risk of doing this is that the SD card filesystem becomes inconsistent, i.e. unreadable. 
 
-## Connecting the Logger to Power
-
-I used the logger with two types of power sources 
-
-1. Independent Power Source: the logger / Arduino is connected to its "own" power source, which is independent of the power source for the load we want to measure. Such an independent power source can be connected to the Arduino USB, VIN/5V (and GND) pins. 
-
-2. Common Power Source: the logger and the load to be measured use a common power source.
-
-There are pros and cons of using an Independent Power Source (1)
-
-   * PRO: power sources with voltages between 0V and 36V can be measured.
-
-   * CON: an USB power supply, a battery pack or similar, more space is needed.
-
-and for a Common Power Source (2)
-
-   * PRO: less space and wiring needed.
-
-   * CON: the supported power source voltages are limited by the Arduino, e.g. in the case of the Arduino Nano Every, the recommended VIN power is between 4.5V and 21V (see MPM3610 specification). 
-
-   * CON: variations of the common power source voltage might impact the measurements.
-
-
 ## Hardware Specs
 
 * [Arduino Nano Every](https://docs.arduino.cc/resources/datasheets/ABX00028-datasheet.pdf)
@@ -107,7 +84,18 @@ and for a Common Power Source (2)
 ## Wiring Diagram
 ![Diagram](/images/FullDiagram.png)
 
-## Internal Wiring diagram of "Red" INA226 Shield/Module
+* The INA226 and the DS1307 connect via I2C to the Arduino.
+* The SD card is connected via SPI.
 
-![Diagram](/images/INA226%20red%20module%20wiring.png)
+
+The SPI terminology can be a bit confusing because the signals were renamed to avoid the master-slave analogy:
+
+| Master/Slave (OLD) |	Controller/Peripheral (NEW)|
+|---|---|
+|Master In Slave Out (MISO)	| Controller In, Peripheral Out (CIPO)|
+|Master Out Slave In (MOSI)	| Controller Out Peripheral In (COPI)|
+|Slave Select pin (SS)	| Chip Select Pin (CS)|
+
+
+[More](MORE.md)
 

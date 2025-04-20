@@ -17,7 +17,7 @@ extern void rtcsetup (char const *compile_date, char const *compile_time);
 INA226_WE ina226 = INA226_WE(I2C_ADDRESS);
 
 // for SPI bus used by Data Logging Module, i.e. SD Card and RTC
-const int chipSelect = 10; // D10 auf Nano Every
+const int chipSelect = 10; // D10; seems to correspond to D13 on Nano Every
 
 const char INIfilename[] = "LOGGER.INI";
 File logfile;
@@ -228,7 +228,7 @@ void setup() {
     }
   
   // Temporary definitions, so I don't have to use the INI file during debugging
-  // freq=1.0;
+  // freq=50.0;
   // busVoltageThreshold=3.0;
   // currentThreshold=0.0;
   // end of TEMP section
@@ -253,8 +253,11 @@ void setup() {
   // find the longest product of AVG and CT which is below delaytime
   averageMode avgResult;
   convTime ctResult;
-  // 3900 microseconds is the typical time it takes to do the loop - (with 140 microseconds conversion and 1 average) - and no SD Disk
-  // With SD disk and no flush, it takes about 7500 microseconds (although I could not measure this yet)
+  // The value 7500 is specific for my hardware!
+  // During a measurement cycle the INA226 measurements and the SD write operation take most of the time.
+  // My hardware needs around 7500 OR 14000 microseconds to write to the SD library. My understanding is that the lower value
+  // is when the SD library buffers the data and the higher value is when the SD library actually writes to the SD card.
+  // So, using 7500 microseconds here means that every few measurements - when actual SD card writes happen - the delaytime can not be met.
   findEnumsMaxProductBelowThreshold(delaytime-7500, &avgResult, &ctResult);
   ina226.setAverage(avgResult);
   ina226.setConversionTime(ctResult);
@@ -354,11 +357,13 @@ void loop() {
         logfile.print(F("Data measured from, "));
         logfile.println(datestring);
         logfile.println(F("millis,micros,status,Load_Voltage,Current_mA, load_Power_mW"));
+        // ensure at least the header is written to the SD card
+        logfile.flush();
         }
         else{
           Serial.println(F("issue writing logfile to SD Card"));
-          // wait 10s; usually the SD card is missing, let's wait 10 secs 
-          // and then re-start like after a hardware reset
+          // usually the SD card is missing, let's wait 10 secs 
+          // and then reboot
           delay(10000);
           reboot();
         } 
@@ -413,12 +418,15 @@ void loop() {
       logfile.print(String(current_mA,5));    logfile.print(",");
       logfile.print(String(power_mW,5));      logfile.println();
 
-      // flushing takes considerable time, so we rely on the SD library to do this from time to time
-      //logfile.flush();
+      // flushing takes around 3..7ms, so we rely on the SD library to flush when 
+      // the respective buffer ( a sector ?) is full - unless we have a delaytime > 500ms
+      if (delaytime>500000) {
+        logfile.flush();
+        }
       }
 
   // if we have enough time, we print measurements to the serial monitor as well
-    if (delaytime>=1000000){
+    if (delaytime>=500000){
       Serial.print(" logging ");
       Serial.print(logging);
       Serial.print(" logfile # ");
