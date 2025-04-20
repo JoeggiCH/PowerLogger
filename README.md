@@ -18,7 +18,7 @@ To stop measuring
 1) disconnect the load: the logger continues measuring/logging for "SwitchTime" seconds and then stops
 2) disconnect the power source
 
-Note that it is better to disconnect the load before disconnecting the power source for the Arduino. Otherwise the logger might loose its power while writing to the SD card, which can cause inconsistent information on the SD card file system. In the worst case, the SD card will become unreadable, must be formatted and the SD card data is lost!
+Note that it is better to use non-zero thresholds for VBUS and current (see below) and to disconnect the load before disconnecting the power source for the Arduino. Otherwise the logger might loose its power while writing to the SD card, which can cause inconsistent information on the SD card file system. In the worst case, the SD card will become unreadable, must be formatted and the SD card data is lost!
 
 ## Wiring for Measurements
 
