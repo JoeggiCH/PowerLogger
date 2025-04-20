@@ -1,6 +1,8 @@
 
 ## Internal Wiring diagram of "Red" INA226 Shield/Module
 
+I used this INA226 module, because it is delivered with a 0.02 Ohm resistor which meets my requirements to measure up to 20 Amps. 
+
 ![Diagram](/images/INA226%20red%20module%20wiring.png)
 
 ## Some Detail "Stuff"
