@@ -57,4 +57,4 @@ and for a Common Power Source (2)
 
 ## An application example
 
-[This analysis](Analysis.ipynb) used the logger to measure battery charge and discharge cycles.
+[This analysis](https://nbviewer.org/github/JoeggiCH/PowerLogger/blob/main/Analysis_inter.ipynb) used the logger to measure battery charge and discharge cycles.
