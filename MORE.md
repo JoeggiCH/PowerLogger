@@ -54,3 +54,7 @@ and for a Common Power Source (2)
 - Connect multiple INA226 devices to allow multiple measurements in parallel
 - Replace the INA226 with a chip, which takes less time to measure voltage and current
 - Build a logger with a BLE or WLAN interface transmitting measurement values to another microcontroller with a display
+
+## An application example
+
+[This analysis](Analysis.ipynb) used the logger to measure battery charge and discharge cycles.
